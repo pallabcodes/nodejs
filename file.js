@@ -19,6 +19,7 @@ console.log(__filename);
 // fs.unlinkSync("thapa/myBio.txt");
 
 // file system : promise
+
 const fs = require("fs/promises");
 
 // fs.mkdir("text");
@@ -29,6 +30,8 @@ const fs = require("fs/promises");
 
 // fs.rename("text/bio.text", "text/myBio.txt");
 
-// fs.readFile("text/myBio.txt");
+// fs.readFile("text/myBio.txt", "utf-8").then((d) => console.log(d));
 
 // fs.unlink("text/myBio.txt");
+
+// fs.rmdir("text", { maxRetries: 2 });
