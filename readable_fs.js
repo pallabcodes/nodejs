@@ -15,9 +15,9 @@ readStream.pause();
 
 process.stdin.on("data", (chunk) => {
   if (chunk.toString().trim() === "finish") {
-    // when input given as 'finish' then stream'll go to flowing/non-pausible mode till done
+    // when input given as 'finish' then stream go to flowing mode (i.e. keep reading chunks until all  done)
     readStream.resume();
   }
-  // whenever pressed "enter" it'll read chunk by chunk i.e. non-flowing/pasuable stream
+  // whenever pressed "enter" it'll read chunk by chunk i.e. non-flowing/passable stream
   readStream.read();
 });

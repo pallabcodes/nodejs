@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "multiparty": "^4.2.3"
+  },
+  "name": "quick_node",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "scripts": {
+    "start": "nodemon http.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kaycodes11/quick_node.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kaycodes11/quick_node/issues"
+  },
+  "homepage": "https://github.com/Kaycodes11/quick_node#readme",
+  "description": ""
+}

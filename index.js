@@ -2,21 +2,24 @@ const http = require("http");
 const fs = require("fs/promises");
 const EventEmitter = require('events'); // this is made fully with the js not c++
 
-class Emitter extends EventEmitter {}
+class Emitter extends EventEmitter {
+}
 
 const event = new Emitter();
 
 // listener
 event.on('foo', () => {
-    console.log(`[foo]: event occurred`);
+    console.log(`[foo]: no parameter`);
 });
 event.on('foo', (x) => {
-    console.log(`[foo]: event occurred wit parameter i.e. ${x}`);
+    console.log(`[foo]: Just emitted foo event ${JSON.stringify(x)}`);
 });
 
+// emitter
 event.emit('foo');
 console.log(`----`);
-event.emit('foo', "some event");
+event.emit('foo', {data: "some data"});
+console.log(`----`);
 
 
 const PORT = 8000;

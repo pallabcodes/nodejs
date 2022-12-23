@@ -5,7 +5,7 @@ const file = "./anime_fight.mp4";
 // const server = http.createServer((req, res) => {
 //   // get largest data then send them as small chunk i.e. stream
 //   const stream = fs.createReadStream(__dirname + "/read.txt");
-//   // source.pipe(destination)
+//   // source.pipe(destination); // similar to  createWriteStream(destination)
 
 //   // there are readable, writable and duplex (can be both writable & duplex) stream
 
@@ -14,12 +14,12 @@ const file = "./anime_fight.mp4";
 
 //   // # DuplexStream: both readable and writeable i.e. source.pipe(destination).pipe(destination)
 
-//   // ## Backpressure, high water marks and perforamnce
+//   // ## Backpressure, high watermarks and performance
 
 //   // i) writable stream must send a signal back to readable streams that they're ready for more data
-//   // ii) this is reason why `stream` able to what it do
+//   // ii) this is reason why `stream` able to what it does
 
-//   // high water marks: how full the stream can be before it's ready to receive further data
+//   // high watermarks: how full the stream can be before it's ready to receive further data
 // });
 
 const server = http.createServer((req, res) => {

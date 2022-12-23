@@ -15,6 +15,9 @@ console.log(__filename);
 
 // fs.renameSync("thapa/bio.txt", "thapa/myBio.txt");
 
+// fs.copyFile('read.txt', 'text.txt');
+
+
 // delete file
 // fs.unlinkSync("thapa/myBio.txt");
 
@@ -26,7 +29,11 @@ const fs = require("fs/promises");
 
 // fs.writeFile("text/bio.text", "writing to this file");
 
+// fs.write("text.txt", "show homework");
+
 // fs.appendFile("text/bio.text", " this is now updated");
+
+// fs.open("text.txt", "w")
 
 // fs.rename("text/bio.text", "text/myBio.txt");
 
@@ -35,3 +42,9 @@ const fs = require("fs/promises");
 // fs.unlink("text/myBio.txt");
 
 // fs.rmdir("text", { maxRetries: 2 });
+
+// fs.chmod('read.txt', 0o400)
+
+
+
+// https://kinsta.com/knowledgebase/nodejs-fs/
