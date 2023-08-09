@@ -7,8 +7,10 @@
 * 0 * 2 exponent 4 = 0
 *
 * 1 + 2 + 0 + 8 + 0 = 11
-*
-*
+* (1 0 1 1) base 2 to decimal = 1 + 0 + 4 + 8 = 13
+* (1 0 1 1) base 10 to decimal = 1 + 0 + 100 + 1000 = 1101
+* (1 0 1 1) base 16 to decimal = 1 + 0 + 256 + 4096 = 4353
+
 * 321 base (10)
 *
 * 1 * 10 exponent 0 = 1
@@ -30,6 +32,8 @@
 *
 *
 * 16777215 : convert this to binary
+
+
 * */
 
 // Node has this `Buffer` to manage raw binary data
@@ -45,8 +49,19 @@ console.log("buff[0]", buff[0]);
 console.log("buff", buff);
 // console.log(buff.toJSON());
 
-// const buff2 = Buffer.from('string', 'utf-8');
-// console.log(buff2);
+// Buffer.from() will allocate bit based on the given data e.g. here it allocates 6 bit
+// const buffFrom = Buffer.from('string', 'utf-8');
+// console.log("buffFrom", buffFrom);
 
-const buff2 = Buffer.from([115, 116, 114, 105, 110, 103], 'hex');
-console.log(`buff2: `, buff2.toString("utf-8"));
+// Buffer.from() will allocate bit based on the given data e.g. here it allocates 6 bit
+const buff2 = Buffer.from([115, 116, 114, 105, 110, 103], "hex");
+console.log(`buff2: `, buff2.toString("utf-8"), buff2);
+
+let zeroBuff = Buffer.alloc(20); // makes 20 bit filled with default 00
+
+console.log("zeroBuff with no value: ", zeroBuff);
+
+// 0b tells that it's a base 2 number; 100 binary number to decimal is 4 
+zeroBuff = Buffer.alloc(20, 0b100); 
+
+console.log("zeroBuff with the value: ", zeroBuff);

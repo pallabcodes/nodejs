@@ -17,7 +17,6 @@ console.log(__filename);
 
 // fs.copyFile('read.txt', 'text.txt');
 
-
 // delete file
 // fs.unlinkSync("thapa/myBio.txt");
 
@@ -27,9 +26,7 @@ const fs = require("fs/promises");
 
 // fs.mkdir("text");
 
-// fs.writeFile("text/bio.text", "writing to this file");
-
-// fs.write("text.txt", "show homework");
+fs.writeFile("text/bio.text", "writing to this file");
 
 // fs.appendFile("text/bio.text", " this is now updated");
 
@@ -43,8 +40,8 @@ const fs = require("fs/promises");
 
 // fs.rmdir("text", { maxRetries: 2 });
 
-// fs.chmod('read.txt', 0o400)
+// fs.chmod('read.txt', 0o400); // (filePath, grant or permission for this file access)
 
-
+// available granting access modes: https://nodejs.org/api/fs.html#fspromiseschmodpath-mode
 
 // https://kinsta.com/knowledgebase/nodejs-fs/

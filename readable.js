@@ -3,9 +3,9 @@ const { Readable } = require("stream");
 const advices = [
   `to buy a house`,
   `first get the skills`,
-  `the find the workplace`,
-  `that will offer at least 400000 salary`,
-  `after that will be eligile to think about own house`,
+  `then find the workplace`,
+  `that will offer at least 40000 salary`,
+  `after that will be eligible to think about own house`,
 ];
 
 class StreamArray extends Readable {
@@ -16,7 +16,7 @@ class StreamArray extends Readable {
     this.index = 0;
   }
   _read() {
-    // stream can data as  binary or object
+    // stream can read data as binary or object
     if (this.index <= this.array.length) {
       // const chunk = this.array[this.index];
       const chunk = { data: this.array[this.index], index: this.index }; // when using the objectMode
