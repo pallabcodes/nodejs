@@ -1,44 +1,47 @@
-console.log(__dirname);
-console.log(__filename);
+console.log(__dirname); // current directory
+console.log(__filename); // current file
 
 // file system : sync
 // const fs = require("fs");
 
-// fs.mkdirSync("thapa");
+// fs.mkdirSync("myFolder"); // this creates a directory by this name
 
-// fs.writeFileSync("thapa/bio.text", "this is sample bio");
+// fs.writeFileSync("myFolder/bio.text", "this is sample bio");
 
-// fs.appendFileSync("thapa/bio.text", " update now");
+// fs.appendFileSync("myFolder/bio.text", " updated now");
 
-// const data = fs.readFileSync("thapa/bio.txt", "utf-8");
+// const rawData = fs.readFileSync("myFolder/myBio.text");
+// console.log(rawData);
+
+// const data = fs.readFileSync("myFolder/myBio.text", "utf-8");
 // console.log(data);
 
-// fs.renameSync("thapa/bio.txt", "thapa/myBio.txt");
+// fs.renameSync("myFolder/bio.text", "myFolder/myBio.text");
 
 // fs.copyFile('read.txt', 'text.txt');
 
 // delete file
-// fs.unlinkSync("thapa/myBio.txt");
+// fs.unlinkSync("myFolder/myBio.text");
 
 // file system : promise
 
 const fs = require("fs/promises");
 
-// fs.mkdir("text");
+// fs.mkdir("myFolder");
 
-fs.writeFile("text/bio.text", "writing to this file");
+// fs.writeFile("myFolder/bio.text", "writing to this file");
 
-// fs.appendFile("text/bio.text", " this is now updated");
+// fs.appendFile("myFolder/bio.text", " now updated");
 
-// fs.open("text.txt", "w")
+// fs.open("myFolder/generated.txt", "w"); // it will simply create this file, with "Write" access
 
-// fs.rename("text/bio.text", "text/myBio.txt");
+// fs.rename("myFolder/bio.txt", "myFolder/myBio.txt");
 
-// fs.readFile("text/myBio.txt", "utf-8").then((d) => console.log(d));
+// fs.readFile("myFolder/myBio.txt", "utf-8").then((d) => console.info("data: ", d));
 
-// fs.unlink("text/myBio.txt");
+// fs.unlink("myFolder/myBio.txt");
 
-// fs.rmdir("text", { maxRetries: 2 });
+fs.rmdir("myFolder", { maxRetries: 2 });
 
 // fs.chmod('read.txt', 0o400); // (filePath, grant or permission for this file access)
 

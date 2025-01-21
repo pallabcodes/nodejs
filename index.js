@@ -2,8 +2,7 @@ const http = require("http");
 const fs = require("fs/promises");
 const EventEmitter = require('events'); // this is made fully with the js not c++
 
-class Emitter extends EventEmitter {
-}
+class Emitter extends EventEmitter { }
 
 const event = new Emitter();
 
@@ -18,7 +17,7 @@ event.on('foo', (x) => {
 // emitter
 event.emit('foo');
 console.log(`----`);
-event.emit('foo', {data: "some data"});
+event.emit('foo', { data: "some data" });
 console.log(`----`);
 
 
@@ -33,3 +32,6 @@ const server = http.createServer(async (request, response) => {
 server.listen(PORT, () => {
     console.log(`server started on ${PORT}`);
 });
+
+
+// native modules : File, Os, Worker Threads, Child process, argv and EventEmitter
