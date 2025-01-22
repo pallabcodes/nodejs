@@ -11,17 +11,17 @@ import {
     setTimeout
 } from 'node:timers/promises'
 
-import { pipeline } from 'node:stream/promises'
-import { PassThrough } from 'node:stream'
+import {pipeline} from 'node:stream/promises'
+import {PassThrough} from 'node:stream'
 
-import { CallTracker, deepStrictEqual } from 'node:assert'
+import {CallTracker, deepStrictEqual} from 'node:assert'
 
 const fileStream1 = createReadStream('./big.file')
 const fileStream2 = createReadStream('./big.file')
 
 createServer((request, response) => {
     console.log('connection received from API 01')
-    // can consume partially stream
+    // can consume partial stream
     fileStream1.pipe(response)
 }).listen(3000, () => console.log('running at 3000'))
 
@@ -34,7 +34,6 @@ createServer(async (request, response) => {
     )
 }).listen(3001, () => console.log('running at 3001'))
 
-// -------------
 await setTimeout(500)
 
 const getHttpStream = (url) => new Promise(resolve => {
