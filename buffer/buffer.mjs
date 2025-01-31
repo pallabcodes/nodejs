@@ -1,4 +1,4 @@
-const buffer = Buffer.alloc(5)
+ const buffer = Buffer.alloc(5)
 buffer.fill('hi', 0, 2)
 buffer.fill(0x3a, 2, 3) // hexadecimal char code for :
 buffer.fill(0x29, 4, 5) // hexadecimal char code for )
