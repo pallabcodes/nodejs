@@ -1,0 +1,12 @@
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export default {
+  'config': join(__dirname, 'src/config/sequelize.js'),
+  'models-path': join(__dirname, 'src/models'),
+  'seeders-path': join(__dirname, 'src/database/seeders'),
+  'migrations-path': join(__dirname, 'src/database/migrations')
+}; 

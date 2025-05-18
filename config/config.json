@@ -1,0 +1,37 @@
+{
+  "windows": {
+    "username": "root",
+    "password": "admin#123",
+    "database": "smartvalut",
+    "host": "0.0.0.0",
+    "dialect": "mysql"
+  },
+  "local": {
+    "username": "root",
+    "password": "admin#123",
+    "database": "smartvalut",
+    "host": "0.0.0.0",
+    "dialect": "mysql"
+  },
+  "development": {
+    "username": "root",
+    "password": "admin#123",
+    "database": "smartvalut",
+    "host": "0.0.0.0",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": "",
+    "database": "",
+    "host": "0.0.0.0",
+    "dialect": "mysql"
+  },
+  "staging": {
+    "username": "root",
+    "password": "",
+    "database": "",
+    "host": "0.0.0.0",
+    "dialect": "mysql"
+  }
+}

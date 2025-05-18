@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="8ded49ac-2073-4f39-ad69-444c1fb2940a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.dockerignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.env.production.example" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/deploy.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/send.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config/config.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config/database.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config/mailer.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ecosystem.config.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/helpers/response.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/migrations/20250514100333-create-users-table.cjs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/User.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/index.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/db/migrate.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/db/reset.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/deploy/deploy.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/seeders/.keep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/config/database.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/models/index.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/admin/controllers/AdminController.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/admin/middlewares/adminPermissions.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/admin/repositories/AdminRepository.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/admin/routes/adminRoutes.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/admin/services/AdminService.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/auth/controllers/authController.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/auth/routes/authRoutes.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/controllers/UserController.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/middlewares/userPermissions.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/models/UserModel.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/repositories/UserRepository.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/routes/userRoutes.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/services/UserService.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/modules/users/tests.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/pipelines/adminPipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/pipelines/dslPipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/pipelines/monoidPipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/pipelines/snapshotWrappedPipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/pipelines/userPipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/config/permissions.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/authMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/auth_old.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/cancellation.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/errorHandler.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/fork.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/hotswap.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/incorporate_01.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/incorporate_02.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/instrumentMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/lazy.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/lens.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/logEffect.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/loggerMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/middlewarePipeline.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/monoids.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/permissionMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/rateLimiter.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/requestContext.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/snapshot.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/stateMachine.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/testMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/transactional.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/uploadMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/validate.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/versioning.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/withMeta.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/middlewares/withMiddlewares.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/policy/index.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_composeMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_contextMiddleware.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_createRoute.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_customError.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_errorHandler.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_logger.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/_wrapRouteHandler.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/compose.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/deepFreeze.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/logger.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/metrics.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/proxy.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/result.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/snapshotManager.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/toExpress.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/shared/utils/transformer.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/structure.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/views/404.ejs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/views/email/template.ejs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 5
+}]]></component>
+  <component name="ProjectId" id="2xHYJggrfIsXme0GH5okOn9gig2" />
+  <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="autoscrollToSource" value="true" />
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "sandbox/functional",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-WS-251.25410.117" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="8ded49ac-2073-4f39-ad69-444c1fb2940a" name="Changes" comment="" />
+      <created>1747596398780</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1747596398780</updated>
+      <workItem from="1747596405222" duration="81000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
