@@ -1,29 +1,137 @@
-# Node.js
+# ───────────────────────────────────────────────
+# Node.js Core
+# ───────────────────────────────────────────────
 node_modules/
-npm-debug.log
-yarn-error.log
-*.env
+**/node_modules/
 package-lock.json
+npm-debug.log*
+yarn.lock
+yarn-error.log*
+pnpm-lock.yaml
 
-# Dependency directories
+# ───────────────────────────────────────────────
+# Environment Variables
+# ───────────────────────────────────────────────
+.env
+.env.*             # Covers .env.development, .env.production, etc.
+
+# ───────────────────────────────────────────────
+# Log Files and PIDs
+# ───────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+*.pid
+*.seed
+*.pid.lock
+
+# ───────────────────────────────────────────────
+# Test Coverage
+# ───────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ───────────────────────────────────────────────
+# System Files
+# ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ───────────────────────────────────────────────
+# Editor/IDE Settings
+# ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ───────────────────────────────────────────────
+# Dependency Caches
+# ───────────────────────────────────────────────
 .pnpm/
 .npm/
 .yarn/
+.cache/
 
-# Optional: OS or Editor files
-.DS_Store
-Thumbs.db
-.vscode/
-*.sublime-project
-*.sublime-workspace
+# ───────────────────────────────────────────────
+# Temporary Files
+# ───────────────────────────────────────────────
+tmp/
+temp/
+*.swp
+*.bak
+*.orig
 
-# Optional: logs and process-specific files
-logs/
+# ───────────────────────────────────────────────
+# Uploads / User Content
+# ───────────────────────────────────────────────
+uploads/
+public/uploads/
+
+# ───────────────────────────────────────────────
+# Sequelize Artifacts
+# ───────────────────────────────────────────────
+migrations/
+seeders/
+models/index.js
+
+# If using compiled model/index.js in production only:
+# !models/index.js
+
+# ───────────────────────────────────────────────
+# Optional: Docker Files (if Docker is adopted later)
+# ───────────────────────────────────────────────
+.docker/
+docker-compose.override.yml
+*.local
+
+# ───────────────────────────────────────────────
+# Optional: Build Outputs (if using Babel/Webpack)
+# ───────────────────────────────────────────────
+dist/
+build/
+
+
+# OS specific
+*.swp                # vim swap files
+*.swo
+*.swn
+*~
+
+# PM2 logs
+
+pids/
 *.pid
 *.log
+*.out
+*.err
 
-# Ignore coverage output
-coverage/
+.eslintcache
 
-# Uploads
-uploads
+*.code-workspace
+.nv/
+
+
+# ───────────────────────────────────────────────
+# Archive and Binary Files
+# ───────────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+*.tgz
+*.bak
+*.tmp
+*.bin
+*.exe
+*.dll
+*.obj
+*.so
+*.dylib
+
