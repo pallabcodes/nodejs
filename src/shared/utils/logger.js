@@ -1,44 +1,66 @@
-// Pure function to create log entry
-const createLogEntry = (level, message, meta = {}) => ({
-  timestamp: new Date().toISOString(),
-  level,
-  message,
-  ...meta
-});
+import winston from 'winston';
 
-// Pure function to format log entry
-const formatLogEntry = (entry) => {
-  const { timestamp, level, message, ...meta } = entry;
-  return JSON.stringify({ timestamp, level, message, ...meta });
-};
+const { createLogger, format, transports } = winston;
+const { combine, timestamp, printf, colorize } = format;
 
-// Pure function to write log
-const writeLog = (level, message, meta = {}) => {
-  const entry = createLogEntry(level, message, meta);
-  const formattedLog = formatLogEntry(entry);
+// Custom format for log messages
+const logFormat = printf(({ level, message, timestamp, ...metadata }) => {
+  let msg = `${timestamp} [${level}]: ${message}`;
   
-  if (level === 'error') {
-    console.error(formattedLog);
-  } else if (level === 'warn') {
-    console.warn(formattedLog);
-  } else {
-    console.log(formattedLog);
+  if (Object.keys(metadata).length > 0) {
+    msg += ` ${JSON.stringify(metadata)}`;
   }
   
-  return entry;
-};
+  return msg;
+});
 
-// Pure functions for different log levels
-const info = (message, meta = {}) => writeLog('info', message, meta);
-const warn = (message, meta = {}) => writeLog('warn', message, meta);
-const error = (message, meta = {}) => writeLog('error', message, meta);
+// Create logger instance
+export const logger = createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: combine(
+    timestamp(),
+    colorize(),
+    logFormat
+  ),
+  transports: [
+    new transports.Console(),
+    new transports.File({ 
+      filename: 'logs/error.log', 
+      level: 'error' 
+    }),
+    new transports.File({ 
+      filename: 'logs/combined.log' 
+    })
+  ]
+});
 
-// Export all logger functions
-export {
-  info,
-  warn,
-  error,
-  createLogEntry,
-  formatLogEntry,
-  writeLog
+// Export middleware factory
+export const createLoggerMiddleware = () => {
+  return async (ctx) => {
+    const { req } = ctx;
+    const start = Date.now();
+
+    // Log request
+    logger.info('Incoming request', {
+      requestId: req.requestContext?.id,
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    // Log response
+    const originalEnd = ctx.res.end;
+    ctx.res.end = function(chunk, encoding) {
+      const duration = Date.now() - start;
+      logger.info('Request completed', {
+        requestId: req.requestContext?.id,
+        statusCode: ctx.res.statusCode,
+        duration: `${duration}ms`
+      });
+      return originalEnd.call(this, chunk, encoding);
+    };
+
+    return ctx;
+  };
 };

@@ -1,19 +1,22 @@
 // src/pipelines/dslPipeline.js
 
-const { createPipeline } = require('../middlewares/dsl');
-const createAuthMiddleware = require('../middlewares/auth');
-const { PERMISSIONS } = require('../config/permissions');
-const { checkPermissions } = require('../middlewares/permission');
-const requestContext = require('../middlewares/requestContext');
+import { createPipeline } from '../shared/middlewares/dsl.js';
+import { createAuthMiddleware } from '../shared/middlewares/auth.js';
+import { PERMISSIONS } from '../shared/config/permissions.js';
+import { checkPermissions } from '../shared/middlewares/permission.js';
+import { requestContext } from '../shared/middlewares/requestContext.js';
+import jwt from 'jsonwebtoken';
 
-const auth = createAuthMiddleware(require('jsonwebtoken'), process.env.JWT_SECRET);
+const auth = createAuthMiddleware(jwt, process.env.JWT_SECRET);
 
-const pipeline = createPipeline()
+// Create a pipeline using the DSL
+export const pipeline = createPipeline()
   .use(requestContext)
   .use(auth)
-  .if(ctx => ctx.user?.roles.includes('admin'), (branch) => {
-    branch.use(checkPermissions([PERMISSIONS.CREATE_USER, PERMISSIONS.DELETE_USER]));
-  })
-  .use(checkPermissions([PERMISSIONS.VIEW_USER]));
+  .use(checkPermissions([PERMISSIONS.ADMIN]))
+  .withErrorHandler((error) => {
+    console.error('Pipeline error:', error);
+    return { error };
+  });
 
-module.exports = pipeline.build();
+export default pipeline.build();

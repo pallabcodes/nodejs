@@ -1,16 +1,21 @@
 // src/pipelines/monoidPipeline.js
-const { composePipelines, emptyMiddleware } = require('../middlewares/monoids');
-const requestContext = require('../middlewares/requestContext');
-const cancellationMiddleware = require('../middlewares/cancellation');
+import { composePipelines, emptyMiddleware } from '../shared/middlewares/monoids.js';
+import { requestContext } from '../shared/middlewares/requestContext.js';
+import { cancellationMiddleware } from '../shared/middlewares/cancellation.js';
 
-const basic = composePipelines(
+// Create a base pipeline with common middleware
+const basePipeline = composePipelines(
   requestContext,
   cancellationMiddleware
 );
 
-const extended = composePipelines(
-  basic,
-  async (ctx) => ({ ok: true, ctx: { ...ctx, fromMonoid: true } })
-);
+// Create an extended pipeline that adds custom middleware
+export const createExtendedPipeline = (customMiddleware) => {
+  return composePipelines(
+    basePipeline,
+    customMiddleware || emptyMiddleware
+  );
+};
 
-module.exports = extended;
+// Export a default pipeline with no custom middleware
+export default basePipeline;

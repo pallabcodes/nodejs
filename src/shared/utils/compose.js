@@ -1,15 +1,21 @@
-const { isErr, ok } = require('./result');
+import { isErr, ok } from './result.js';
 
-const compose = (...middlewares) => async (ctx) => {
-  let currentCtx = ctx;
-  
-  for (const mw of middlewares) {
-    const result = await mw(currentCtx);
-    if (isErr(result)) return result;
-    currentCtx = result.ctx;
-  }
-  
-  return ok(currentCtx);
+export const compose = (...middlewares) => {
+  return async (req, res, next) => {
+    try {
+      const ctx = { req, res };
+      
+      for (const middleware of middlewares) {
+        const result = await middleware(ctx);
+        if (isErr(result)) {
+          return next(result.error);
+        }
+        Object.assign(ctx, result.value);
+      }
+      
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
 };
-
-module.exports = compose;

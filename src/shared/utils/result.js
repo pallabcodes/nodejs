@@ -1,16 +1,31 @@
-const ok = (ctx) => ({ ok: true, ctx });
-
-const err = (error, code = 'GENERIC', remediation = null) => ({
-    ok: false,
-    error: {
-        message: error.message || error.toString(),
-        code,
-        remediation,
-        stack: error.stack || new Error().stack,
-    },
+// Result type for functional error handling
+export const ok = (value) => ({
+  isOk: true,
+  isErr: false,
+  value,
+  error: null
 });
 
-const isOk = (res) => res.ok === true;
-const isErr = (res) => res.ok === false;
+export const err = (error) => ({
+  isOk: false,
+  isErr: true,
+  value: null,
+  error
+});
 
-export { ok, err, isOk, isErr };
+export const isOk = (result) => result.isOk;
+export const isErr = (result) => result.isErr;
+
+export const unwrap = (result) => {
+  if (isErr(result)) {
+    throw result.error;
+  }
+  return result.value;
+};
+
+export const unwrapOr = (result, defaultValue) => {
+  if (isErr(result)) {
+    return defaultValue;
+  }
+  return result.value;
+};

@@ -1,83 +1,90 @@
-import database from '../config/database.js';
-import User from '../modules/users/models/UserModel.js';
-// Add service discovery
-import { ServiceRegistry } from '../infrastructure/service-registry.js';
-// Add circuit breaker
-import { CircuitBreaker } from '../infrastructure/circuit-breaker.js';
-// Add distributed tracing
-import { Tracer } from '../infrastructure/tracer.js';
-// Add structured logging
-import { Logger } from '../infrastructure/logger.js';
-// Add metrics
-import { Metrics } from '../infrastructure/metrics.js';
-// Add APM
-import { APM } from '../infrastructure/apm.js';
-// Add rate limiting
-import { RateLimiter } from '../infrastructure/rate-limiter.js';
-// Add API key management
-import { APIKeyManager } from '../infrastructure/api-key-manager.js';
-// Add audit logging
-import { AuditLogger } from '../infrastructure/audit-logger.js';
-// Add caching
-import { Cache } from '../infrastructure/cache.js';
-// Add read/write separation
-import { DatabaseCluster } from '../infrastructure/database-cluster.js';
+'use strict';
 
-// Pure function to initialize model associations
-const initializeAssociations = (models) => {
-  Object.values(models).forEach(model => {
-    if (typeof model.associate === 'function') {
-      model.associate(models);
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { Sequelize } from 'sequelize';
+import { dirname } from 'path';
+import process from 'process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const basename = path.basename(__filename);
+const env = process.env.NODE_ENV || 'development';
+
+// Read config from JSON file
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf8'))[env];
+
+const db = {};
+
+let sequelize;
+
+if (config.use_env_variable) {
+  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+} else {
+  sequelize = new Sequelize(config.database, config.username, config.password, config);
+}
+
+// Function to get all model files recursively
+const getModelFiles = (dir) => {
+  const files = fs.readdirSync(dir);
+  const modelFiles = [];
+
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+
+    if (stat.isDirectory()) {
+      // If it's a directory, check if it's a models directory
+      if (file === 'models') {
+        const modelDirFiles = fs.readdirSync(filePath)
+          .filter(f => f.endsWith('.js') && !f.endsWith('.test.js'))
+          .map(f => path.join(filePath, f));
+        modelFiles.push(...modelDirFiles);
+      } else {
+        // Recursively search other directories
+        modelFiles.push(...getModelFiles(filePath));
+      }
     }
-  });
-  return models;
+  }
+
+  return modelFiles;
 };
 
-// Pure function to create model registry
-const createModelRegistry = () => ({
-  User
-});
+// Get model files from both src/models and src/modules
+const modelFiles = [
+  // Models in src/models
+  ...fs.readdirSync(__dirname)
+    .filter(file => {
+      return (
+        file.indexOf('.') !== 0 &&
+        file !== basename &&
+        file.slice(-3) === '.js' &&
+        file.indexOf('.test.js') === -1
+      );
+    })
+    .map(file => path.join(__dirname, file)),
+  // Models in src/modules/*/models
+  ...getModelFiles(path.join(__dirname, '../modules'))
+];
 
-// Pure function to create database configuration
-const createDatabaseConfig = () => ({
-  pool: {
-    max: 10,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+// Import all models
+for (const file of modelFiles) {
+  const fileUrl = `file://${file.replace(/\\/g, '/')}`;
+  const model = await import(fileUrl);
+  const modelInstance = model.default(sequelize, Sequelize.DataTypes);
+  db[modelInstance.name] = modelInstance;
+}
+
+// Set up associations
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
   }
 });
 
-// Pure function to create application dependencies
-const createAppDependencies = () => ({
-  database,
-  models: createModelRegistry(),
-  config: createDatabaseConfig()
-});
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
 
-// Initialize models with associations
-const models = initializeAssociations(createModelRegistry());
-
-// Export all necessary functions and objects
-export {
-  models,
-  createModelRegistry,
-  createDatabaseConfig,
-  createAppDependencies,
-  initializeAssociations
-};
-
-// Instead of direct imports
-const createApp = (dependencies) => {
-  const { database, models, routes } = dependencies;
-  // ... rest of the code
-};
-
-const pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);
-
-const app = pipe(
-  createApp,
-  setupRoutes,
-  setupHealthCheck,
-  setupErrorHandling
-)({ database, models, routes });
+export default db;

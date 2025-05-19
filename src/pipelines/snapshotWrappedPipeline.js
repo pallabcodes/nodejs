@@ -1,18 +1,24 @@
 // src/pipelines/snapshotWrappedPipeline.js
-const compose = require('../utils/compose');
-const requestContext = require('../middlewares/requestContext');
-const createSnapshotManager = require('../utils/snapshotManager');
+import { compose } from '../shared/utils/compose.js';
+import { requestContext } from '../shared/middlewares/requestContext.js';
+import { createSnapshotManager } from '../shared/utils/snapshotManager.js';
 
-const snapshot = createSnapshotManager();
+export const createSnapshotWrappedPipeline = (innerPipeline) => {
+  const snapshotManager = createSnapshotManager();
 
-const snapshotWrapper = async (ctx) => {
-  snapshot.snapshot(ctx);
-  const result = await Promise.resolve({ ok: true, ctx });
-  snapshot.snapshot(result.ctx);
-  return result;
+  return compose(
+    requestContext,
+    async (ctx) => {
+      const snapshot = await snapshotManager.createSnapshot(ctx);
+      const result = await innerPipeline(ctx);
+      
+      if (result.isErr) {
+        await snapshotManager.rollback(snapshot.id);
+      } else {
+        await snapshotManager.commit(snapshot.id);
+      }
+
+      return result;
+    }
+  );
 };
-
-module.exports = compose(
-  requestContext,
-  snapshotWrapper
-);

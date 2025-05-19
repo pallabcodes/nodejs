@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from 'redis';
-import { RateLimiter } from './rate-limiter.js';
+import { getRateLimiter } from './rate-limiter.js';
 
 class APIKey {
   constructor(key, options = {}) {
@@ -51,9 +51,11 @@ const createAPIKeyManager = async (options = {}) => {
     redisUrl = process.env.REDIS_URL,
     storageType = process.env.API_KEY_STORAGE || 'memory',
     keyPrefix = 'apikey:',
-    keyLength = 32,
-    rateLimiter
+    keyLength = 32
   } = options;
+
+  // Initialize rate limiter
+  const rateLimiter = await getRateLimiter();
 
   let storage;
   let redisClient;

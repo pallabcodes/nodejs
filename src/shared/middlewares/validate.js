@@ -1,15 +1,28 @@
 // src/middlewares/validate.js
-const { ok, err } = require('../utils/result');
+import { ok, err } from '../utils/result.js';
+import { createError } from '../utils/error.js';
 
-const createValidatedMiddleware = (schema, middlewareFn) => {
+export const createValidatedMiddleware = (schema) => {
   return async (ctx) => {
     try {
-      await schema.validate(ctx.req.body);
-    } catch (e) {
-      return err(new Error(`Validation failed: ${e.message}`), 'VALIDATION_ERROR');
+      const validationResult = await schema.validate(ctx.req.body, {
+        abortEarly: false,
+        stripUnknown: true
+      });
+
+      if (validationResult.error) {
+        const errors = validationResult.error.details.map(detail => ({
+          field: detail.path.join('.'),
+          message: detail.message
+        }));
+        return err(createError(400, 'Validation failed', 'VALIDATION_ERROR', errors));
+      }
+
+      // Replace request body with validated data
+      ctx.req.body = validationResult.value;
+      return ok(ctx);
+    } catch (error) {
+      return err(error);
     }
-    return middlewareFn(ctx);
   };
 };
-
-module.exports = createValidatedMiddleware;

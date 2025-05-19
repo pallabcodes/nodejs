@@ -1,11 +1,24 @@
 // src/middlewares/cancellation.js
-const { ok, err } = require('../utils/result');
+import { ok, err } from '../utils/result.js';
+import { createError } from '../utils/error.js';
 
-const cancellationMiddleware = async (ctx) => {
-  if (ctx.cancelToken?.aborted || ctx.cancelToken?.isCancelled?.()) {
-    return err(new Error('Request cancelled'), 'CANCELLED');
+export const cancellationMiddleware = async (ctx) => {
+  try {
+    const { req } = ctx;
+    
+    // Check if request was aborted
+    if (req.aborted) {
+      return err(createError(499, 'Client closed request', 'REQUEST_CANCELLED'));
+    }
+
+    // Add abort handler
+    req.on('aborted', () => {
+      // Clean up any resources if needed
+      console.log('Request aborted:', req.requestContext?.id);
+    });
+
+    return ok(ctx);
+  } catch (error) {
+    return err(error);
   }
-  return ok(ctx);
 };
-
-module.exports = cancellationMiddleware;

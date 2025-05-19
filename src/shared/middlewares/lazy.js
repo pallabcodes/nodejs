@@ -1,16 +1,20 @@
 // src/middlewares/lazy.js
 
-const lazy = (fn) => ({
-  get: () => fn(),
-  cached: false,
-  value: undefined,
-  eval() {
-    if (!this.cached) {
-      this.value = this.get();
-      this.cached = true;
-    }
-    return this.value;
-  },
-});
+import { ok } from '../utils/result.js';
 
-module.exports = lazy;
+export const lazy = (factory) => {
+  let instance = null;
+
+  return async (ctx) => {
+    try {
+      if (!instance) {
+        instance = factory();
+      }
+      await instance(ctx);
+      return ok(ctx);
+    } catch (error) {
+      console.error('Lazy middleware error:', error);
+      return ok(ctx); // Don't fail the request
+    }
+  };
+};

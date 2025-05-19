@@ -1,17 +1,30 @@
 // src/modules/users/tests.js
-const assert = require('assert');
-const { checkPermissions } = require('../../middlewares/permission');
-const { ok, isErr } = require('../../utils/result');
+import assert from 'assert';
+import { checkPermissions } from '../../shared/middlewares/permission.js';
+import { ok, isErr } from '../../shared/utils/result.js';
 
-(async () => {
-  const adminCtx = { user: { roles: ['admin'] } };
-  const userCtx = { user: { roles: ['user'] } };
+// Test suite for permission middleware
+const testPermissions = async () => {
+  const mockCtx = {
+    req: {
+      user: {
+        permissions: ['CREATE_USER', 'DELETE_USER']
+      }
+    }
+  };
 
-  const adminResult = await checkPermissions(['create_user'])(adminCtx);
-  assert.ok(adminResult.ok, 'Admin should pass permission');
+  // Test case: User has required permissions
+  const result1 = await checkPermissions(['CREATE_USER'])(mockCtx);
+  assert.ok(isOk(result1), 'Should allow user with required permission');
 
-  const userResult = await checkPermissions(['create_user'])(userCtx);
-  assert.ok(isErr(userResult), 'User should fail permission');
+  // Test case: User lacks required permission
+  const result2 = await checkPermissions(['ADMIN'])(mockCtx);
+  assert.ok(isErr(result2), 'Should deny user without required permission');
 
-  console.log('✅ Permission middleware tests passed.');
-})();
+  // Test case: No user in context
+  const result3 = await checkPermissions(['CREATE_USER'])({ req: {} });
+  assert.ok(isErr(result3), 'Should deny request without user');
+};
+
+// Run tests
+testPermissions().catch(console.error);
