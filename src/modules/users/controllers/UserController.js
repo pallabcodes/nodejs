@@ -3,7 +3,7 @@ import db from '../../../models/index.js';
 import { createUserSchema } from '../schemas/userSchema.js';
 import { validateSchema } from '../../../shared/utils/validator.js';
 import { createError } from '../../../shared/utils/error.js';
-import { createMetadata } from '../../../shared/utils/response.js';
+import { createMetadata, response } from '../../../shared/utils/response.js';
 
 const { User } = db;
 
@@ -171,5 +171,18 @@ export const UserController = {
     } catch (error) {
       return res.error(error);
     }
+  },
+
+  // List users with pagination
+  async listUsers(req, res) {
+    // ...fetch users and pagination info...
+    const users = [/* ... */];
+    const pagination = {
+      page: 1,
+      pageSize: 10,
+      total: 100,
+      totalPages: 10
+    };
+    return response(res, users, 'User list', 200, {}, req.locale || 'en', pagination);
   }
 };
