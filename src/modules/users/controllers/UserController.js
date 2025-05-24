@@ -3,7 +3,7 @@ import db from '../../../models/index.js';
 import { createUserSchema } from '../schemas/userSchema.js';
 import { validateSchema } from '../../../shared/utils/validator.js';
 import { createError } from '../../../shared/utils/error.js';
-import { createMetadata, response } from '../../../shared/utils/response.js';
+import { createMetadata, createSuccessResponse as response } from '../../../shared/utils/response.js';
 
 const { User } = db;
 
