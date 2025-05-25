@@ -1,7 +1,7 @@
 {
   "development": {
-    "username": "kyc_user",
-    "password": "MyPasswordHere@#",
+    "username": "kyc_user_local",
+    "password": "MyPasswordHere1!",
     "database": "smart_vault_local",
     "host": "127.0.0.1",
     "dialect": "mysql",

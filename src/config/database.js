@@ -20,8 +20,8 @@ const validateConfig = (config) => {
 // Pure function to create database configuration
 const createDatabaseConfig = (environment) => ({
   development: {
-    username: process.env.DB_USERNAME || 'kyc_user',
-    password: process.env.DB_PASSWORD || 'MyPasswordHere@#',
+    username: process.env.DB_USERNAME || 'kyc_user_local',
+    password: process.env.DB_PASSWORD || 'MyPasswordHere1!',
     database: process.env.DB_DATABASE || 'smart_vault_local',
     host: process.env.DB_HOST || '127.0.0.1',
     dialect: process.env.DB_DIALECT || 'mysql',
