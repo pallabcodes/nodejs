@@ -1,10 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
-import { AuthorizationService } from '../auth/AuthorizationService';
-import { AuthContext, AuthorizationError, AuthErrorCodes, AuthResult } from '../auth/types';
-import { logger } from '../utils/logger';
+import { Request, Response, NextFunction } from "express";
+import { AuthorizationService } from "../auth/AuthorizationService";
+import {
+  AuthContext,
+  AuthorizationError,
+  AuthErrorCodes,
+  AuthResult,
+} from "../auth/types";
+import { logger } from "../utils/logger";
 
 // Extend Express types
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {
@@ -39,7 +45,7 @@ export const createAuthMiddleware = (redisUrl: string) => {
       if (!user) {
         throw new AuthorizationError(
           AuthErrorCodes.INVALID_CONTEXT,
-          'User not authenticated'
+          "User not authenticated",
         );
       }
 
@@ -47,7 +53,7 @@ export const createAuthMiddleware = (redisUrl: string) => {
       const context: AuthContext = {
         subject: {
           id: user.id,
-          type: 'user',
+          type: "user",
           roles: user.roles || [],
           permissions: user.permissions || [],
           attributes: user.attributes || {},
@@ -58,8 +64,8 @@ export const createAuthMiddleware = (redisUrl: string) => {
         },
         action: req.method.toLowerCase(),
         resource: {
-          id: req.params.id || '*',
-          type: req.baseUrl.split('/')[1] || 'unknown',
+          id: req.params.id || "*",
+          type: req.baseUrl.split("/")[1] || "unknown",
           attributes: {
             ...req.params,
             ...req.query,
@@ -73,31 +79,38 @@ export const createAuthMiddleware = (redisUrl: string) => {
           },
         },
         environment: {
-          ip: req.ip || '0.0.0.0',
-          userAgent: req.headers['user-agent'] || undefined,
+          ip: req.ip || "0.0.0.0",
+          userAgent: req.headers["user-agent"] || undefined,
           timestamp: new Date(),
-          location: req.get('cf-ipcountry') ? {
-            country: req.get('cf-ipcountry') || 'unknown',
-            city: req.get('cf-ipcity') || 'unknown',
-          } : undefined,
+          location: req.get("cf-ipcountry")
+            ? {
+                country: req.get("cf-ipcountry") || "unknown",
+                city: req.get("cf-ipcity") || "unknown",
+              }
+            : undefined,
           device: {
-            type: req.get('sec-ch-ua-platform') || 'unknown',
-            os: req.get('sec-ch-ua-platform') || 'unknown',
-            browser: req.get('sec-ch-ua') || 'unknown',
+            type: req.get("sec-ch-ua-platform") || "unknown",
+            os: req.get("sec-ch-ua-platform") || "unknown",
+            browser: req.get("sec-ch-ua") || "unknown",
           },
         },
-        session: req.authSession ? {
-          id: req.authSession.id,
-          token: req.authSession.token,
-          expiresAt: new Date(req.authSession.cookie.expires || Date.now() + 24 * 60 * 60 * 1000),
-        } : undefined,
+        session: req.authSession
+          ? {
+              id: req.authSession.id,
+              token: req.authSession.token,
+              expiresAt: new Date(
+                req.authSession.cookie.expires ||
+                  Date.now() + 24 * 60 * 60 * 1000,
+              ),
+            }
+          : undefined,
       };
 
       // Evaluate authorization
       const result = await authService.evaluate(context);
 
       if (!result.allowed) {
-        logger.warn('Authorization denied', {
+        logger.warn("Authorization denied", {
           context,
           reason: result.reason,
           roles: result.roles,
@@ -107,7 +120,7 @@ export const createAuthMiddleware = (redisUrl: string) => {
 
         throw new AuthorizationError(
           AuthErrorCodes.INSUFFICIENT_PERMISSIONS,
-          result.reason || 'Access denied'
+          result.reason || "Access denied",
         );
       }
 
@@ -127,11 +140,11 @@ export const createAuthMiddleware = (redisUrl: string) => {
           },
         });
       } else {
-        logger.error('Authorization middleware error:', error);
+        logger.error("Authorization middleware error:", error);
         res.status(500).json({
           error: {
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'An unexpected error occurred',
+            code: "INTERNAL_SERVER_ERROR",
+            message: "An unexpected error occurred",
           },
         });
       }

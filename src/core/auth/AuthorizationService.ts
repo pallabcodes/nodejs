@@ -1,7 +1,17 @@
-import { AuthContext, AuthResult, Policy, Role, Relationship, AuthorizationError, AuthErrorCodes } from './types';
-import { logger } from '../utils/logger';
-import { Redis } from 'ioredis';
-import { performance } from 'perf_hooks';
+import {
+  AuthContext,
+  AuthResult,
+  Policy,
+  Role,
+  Relationship,
+  AuthorizationError,
+  AuthErrorCodes,
+  Subject,
+  Resource,
+} from "./types";
+import { logger } from "../utils/logger";
+import { Redis } from "ioredis";
+import { performance } from "perf_hooks";
 
 export class AuthorizationService {
   private static instance: AuthorizationService;
@@ -45,7 +55,8 @@ export class AuthorizationService {
       ]);
 
       // Combine results (all must allow)
-      const allowed = rbacResult.allowed && pbacResult.allowed && rebacResult.allowed;
+      const allowed =
+        rbacResult.allowed && pbacResult.allowed && rebacResult.allowed;
       const result: AuthResult = {
         allowed,
         reason: this.getDenialReason(rbacResult, pbacResult, rebacResult),
@@ -64,25 +75,26 @@ export class AuthorizationService {
 
       return result;
     } catch (error) {
-      logger.error('Authorization evaluation failed:', error);
+      logger.error("Authorization evaluation failed:", error);
       throw new AuthorizationError(
         AuthErrorCodes.INVALID_CONTEXT,
-        'Failed to evaluate authorization',
-        context
+        "Failed to evaluate authorization",
+        context,
       );
     }
   }
 
   private async evaluateRBAC(context: AuthContext): Promise<AuthResult> {
     const { subject, action, resource } = context;
-    
+
     // Get roles from database/cache
     const roles = await this.getRoles(subject.roles);
-    
+
     // Check if any role has the required permission
-    const hasPermission = roles.some(role => 
-      role.permissions.includes(action) || 
-      role.permissions.includes(`${resource.type}:${action}`)
+    const hasPermission = roles.some(
+      (role) =>
+        role.permissions.includes(action) ||
+        role.permissions.includes(`${resource.type}:${action}`),
     );
 
     return {
@@ -97,11 +109,12 @@ export class AuthorizationService {
   }
 
   private async evaluatePBAC(context: AuthContext): Promise<AuthResult> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { subject, action, resource, environment } = context;
-    
+
     // Get applicable policies
     const policies = await this.getPolicies(subject, resource);
-    
+
     // Sort policies by priority
     policies.sort((a, b) => b.priority - a.priority);
 
@@ -110,7 +123,7 @@ export class AuthorizationService {
       const matches = this.evaluatePolicy(policy, context);
       if (matches) {
         return {
-          allowed: policy.effect === 'allow',
+          allowed: policy.effect === "allow",
           policies: [policy],
           metadata: {
             evaluatedAt: new Date(),
@@ -135,13 +148,13 @@ export class AuthorizationService {
 
   private async evaluateReBAC(context: AuthContext): Promise<AuthResult> {
     const { subject, resource } = context;
-    
+
     // Get relationships
     const relationships = await this.getRelationships(subject, resource);
-    
+
     // Check if any relationship grants access
-    const hasAccess = relationships.some(rel => 
-      this.isValidRelationship(rel, context)
+    const hasAccess = relationships.some((rel) =>
+      this.isValidRelationship(rel, context),
     );
 
     return {
@@ -157,41 +170,46 @@ export class AuthorizationService {
 
   private evaluatePolicy(policy: Policy, context: AuthContext): boolean {
     // Check if action and resource match
-    if (!policy.actions.includes(context.action) || 
-        !policy.resources.includes(context.resource.type)) {
+    if (
+      !policy.actions.includes(context.action) ||
+      !policy.resources.includes(context.resource.type)
+    ) {
       return false;
     }
 
     // Evaluate all conditions
-    return policy.conditions.every(condition => 
-      this.evaluateCondition(condition, context)
+    return policy.conditions.every((condition) =>
+      this.evaluateCondition(condition, context),
     );
   }
 
-  private evaluateCondition(condition: PolicyCondition, context: AuthContext): boolean {
+  private evaluateCondition(
+    condition: PolicyCondition,
+    context: AuthContext,
+  ): boolean {
     const { attribute, operator, value } = condition;
     const subjectValue = this.getAttributeValue(attribute, context);
 
     switch (operator) {
-      case 'equals':
+      case "equals":
         return subjectValue === value;
-      case 'contains':
+      case "contains":
         return String(subjectValue).includes(String(value));
-      case 'startsWith':
+      case "startsWith":
         return String(subjectValue).startsWith(String(value));
-      case 'endsWith':
+      case "endsWith":
         return String(subjectValue).endsWith(String(value));
-      case 'matches':
+      case "matches":
         return new RegExp(String(value)).test(String(subjectValue));
-      case 'in':
+      case "in":
         return Array.isArray(value) && value.includes(subjectValue);
-      case 'gt':
+      case "gt":
         return subjectValue > value;
-      case 'lt':
+      case "lt":
         return subjectValue < value;
-      case 'gte':
+      case "gte":
         return subjectValue >= value;
-      case 'lte':
+      case "lte":
         return subjectValue <= value;
       default:
         return false;
@@ -200,7 +218,8 @@ export class AuthorizationService {
 
   private getAttributeValue(attribute: string, context: AuthContext): unknown {
     // Support nested attributes with dot notation
-    const parts = attribute.split('.');
+    const parts = attribute.split(".");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let value: any = context;
 
     for (const part of parts) {
@@ -211,19 +230,22 @@ export class AuthorizationService {
     return value;
   }
 
-  private isValidRelationship(relationship: Relationship, context: AuthContext): boolean {
+  private isValidRelationship(
+    relationship: Relationship,
+    context: AuthContext,
+  ): boolean {
     const { subject, resource } = context;
-    
+
     // Check if relationship connects subject and resource
     return (
-      (relationship.sourceType === subject.type && 
-       relationship.sourceId === subject.id &&
-       relationship.targetType === resource.type &&
-       relationship.targetId === resource.id) ||
+      (relationship.sourceType === subject.type &&
+        relationship.sourceId === subject.id &&
+        relationship.targetType === resource.type &&
+        relationship.targetId === resource.id) ||
       (relationship.sourceType === resource.type &&
-       relationship.sourceId === resource.id &&
-       relationship.targetType === subject.type &&
-       relationship.targetId === subject.id)
+        relationship.sourceId === resource.id &&
+        relationship.targetType === subject.type &&
+        relationship.targetId === subject.id)
     );
   }
 
@@ -241,26 +263,42 @@ export class AuthorizationService {
     await this.cache.setex(key, this.cacheTTL, JSON.stringify(result));
   }
 
-  private getDenialReason(rbac: AuthResult, pbac: AuthResult, rebac: AuthResult): string | undefined {
-    if (!rbac.allowed) return 'Insufficient role permissions';
-    if (!pbac.allowed) return 'Policy violation';
-    if (!rebac.allowed) return 'No valid relationship found';
+  private getDenialReason(
+    rbac: AuthResult,
+    pbac: AuthResult,
+    rebac: AuthResult,
+  ): string | undefined {
+    if (!rbac.allowed) return "Insufficient role permissions";
+    if (!pbac.allowed) return "Policy violation";
+    if (!rebac.allowed) return "No valid relationship found";
     return undefined;
   }
 
   // These methods would typically interact with your database
+  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async getRoles(roleIds: string[]): Promise<Role[]> {
     // Implement role fetching from database
     return [];
   }
 
-  private async getPolicies(subject: Subject, resource: Resource): Promise<Policy[]> {
+  private async getPolicies(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    subject: Subject,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    resource: Resource,
+  ): Promise<Policy[]> {
     // Implement policy fetching from database
     return [];
   }
 
-  private async getRelationships(subject: Subject, resource: Resource): Promise<Relationship[]> {
+  private async getRelationships(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    subject: Subject,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    resource: Resource,
+  ): Promise<Relationship[]> {
     // Implement relationship fetching from database
     return [];
   }
-} 
+}

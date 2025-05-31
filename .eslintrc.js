@@ -1,22 +1,22 @@
-{
-  "env": {
-    "node": true,
-    "es2022": true
+module.exports = {
+  env: {
+    node: true,
+    es2022: true
   },
-  "extends": [
+  extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended"
   ],
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "ecmaVersion": "latest",
-    "sourceType": "module"
+  parser: "@typescript-eslint/parser",
+  parserOptions: {
+    ecmaVersion: "latest",
+    sourceType: "module"
   },
-  "plugins": ["@typescript-eslint"],
-  "rules": {
+  plugins: ["@typescript-eslint"],
+  rules: {
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/no-explicit-any": "error",
     "no-console": "warn"
   }
-} 
+};

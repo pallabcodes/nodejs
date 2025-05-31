@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Base types for all authorization models
 export type Resource = {
@@ -15,7 +15,7 @@ export type Resource = {
 
 export type Subject = {
   id: string;
-  type: 'user' | 'service' | 'system';
+  type: "user" | "service" | "system";
   attributes: Record<string, unknown>;
   roles: string[];
   permissions: string[];
@@ -46,7 +46,7 @@ export type Policy = {
   id: string;
   name: string;
   description?: string;
-  effect: 'allow' | 'deny';
+  effect: "allow" | "deny";
   conditions: PolicyCondition[];
   actions: string[];
   resources: string[];
@@ -60,7 +60,17 @@ export type Policy = {
 
 export interface PolicyCondition {
   attribute: string;
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'matches' | 'in' | 'gt' | 'lt' | 'gte' | 'lte';
+  operator:
+    | "equals"
+    | "contains"
+    | "startsWith"
+    | "endsWith"
+    | "matches"
+    | "in"
+    | "gt"
+    | "lt"
+    | "gte"
+    | "lte";
   value: unknown;
 }
 
@@ -125,20 +135,20 @@ export class AuthorizationError extends Error {
   constructor(
     public code: string,
     message: string,
-    public context?: Partial<AuthContext>
+    public context?: Partial<AuthContext>,
   ) {
     super(message);
-    this.name = 'AuthorizationError';
+    this.name = "AuthorizationError";
   }
 }
 
 export const AuthErrorCodes = {
-  INSUFFICIENT_PERMISSIONS: 'AUTH_001',
-  INVALID_ROLE: 'AUTH_002',
-  POLICY_VIOLATION: 'AUTH_003',
-  RELATIONSHIP_NOT_FOUND: 'AUTH_004',
-  INVALID_CONTEXT: 'AUTH_005',
-  RATE_LIMITED: 'AUTH_006',
-  SESSION_EXPIRED: 'AUTH_007',
-  INVALID_TENANT: 'AUTH_008',
+  INSUFFICIENT_PERMISSIONS: "AUTH_001",
+  INVALID_ROLE: "AUTH_002",
+  POLICY_VIOLATION: "AUTH_003",
+  RELATIONSHIP_NOT_FOUND: "AUTH_004",
+  INVALID_CONTEXT: "AUTH_005",
+  RATE_LIMITED: "AUTH_006",
+  SESSION_EXPIRED: "AUTH_007",
+  INVALID_TENANT: "AUTH_008",
 } as const;

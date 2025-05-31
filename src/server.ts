@@ -1,7 +1,5 @@
-import express, {Application} from 'express';
+import express, { Application } from "express";
 
 const app: Application = express();
 
-app.listen(3001, () => {
-    console.log(`server started`);
-})
+app.listen(3001);
