@@ -346,6 +346,14 @@ export class InteractiveCLI {
 
                     const parsedDetails = JSON.parse(containerDetails);
 
+                    // Format Ports information
+                    const ports = parsedDetails.NetworkSettings.Ports;
+                    const formattedPorts = ports
+                        ? Object.entries(ports)
+                              .map(([key, value]) => `${key} -> ${value?.[0]?.HostIp || '0.0.0.0'}:${value?.[0]?.HostPort || 'N/A'}`)
+                              .join(', ')
+                        : 'N/A';
+
                     // Display container information
                     console.log(chalk.bold('📋 Container Information:'));
                     console.log('─'.repeat(40));
@@ -353,7 +361,7 @@ export class InteractiveCLI {
                     console.log(`${chalk.dim('Image')}: ${chalk.yellow(parsedDetails.Config.Image)}`);
                     console.log(`${chalk.dim('State')}: ${chalk.blue(parsedDetails.State.Status)}`);
                     console.log(`${chalk.dim('Created')}: ${chalk.magenta(parsedDetails.Created)}`);
-                    console.log(`${chalk.dim('Ports')}: ${chalk.cyan(parsedDetails.NetworkSettings.Ports || 'N/A')}`);
+                    console.log(`${chalk.dim('Ports')}: ${chalk.cyan(formattedPorts)}`);
                 } catch (error) {
                     throw new Error(`Failed to fetch container information: ${(error as Error).message}`);
                 }
