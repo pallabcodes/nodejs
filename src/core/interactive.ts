@@ -331,6 +331,34 @@ export class InteractiveCLI {
                 }
                 break;
             }
+            case 'info': {
+                console.log(chalk.cyan('🔍 Fetching container information...\n'));
+
+                const containerClient = this.client as ContainerClient;
+
+                try {
+                    const container = containerClient.getContainerInfo();
+
+                    // Fetch detailed container information using Docker inspect
+                    const containerDetails = await this.executeCommand(
+                        `docker inspect ${container.id} --format "{{json .}}"`
+                    );
+
+                    const parsedDetails = JSON.parse(containerDetails);
+
+                    // Display container information
+                    console.log(chalk.bold('📋 Container Information:'));
+                    console.log('─'.repeat(40));
+                    console.log(`${chalk.dim('Name')}: ${chalk.green(parsedDetails.Name)}`);
+                    console.log(`${chalk.dim('Image')}: ${chalk.yellow(parsedDetails.Config.Image)}`);
+                    console.log(`${chalk.dim('State')}: ${chalk.blue(parsedDetails.State.Status)}`);
+                    console.log(`${chalk.dim('Created')}: ${chalk.magenta(parsedDetails.Created)}`);
+                    console.log(`${chalk.dim('Ports')}: ${chalk.cyan(parsedDetails.NetworkSettings.Ports || 'N/A')}`);
+                } catch (error) {
+                    throw new Error(`Failed to fetch container information: ${(error as Error).message}`);
+                }
+                break;
+            }
             default:
                 console.log(chalk.yellow('Unknown docker command. Type .help for available commands.'));
         }
