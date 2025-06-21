@@ -173,7 +173,7 @@ export class ContainerClient extends EventEmitter {
   /**
    * Change the current database
    */
-  async switchDatabase(database: string): Promise<void> {
+  async switchDatabase(database: string, password?: string): Promise<void> {
     // Test if the database exists
     const dbList = await this.dockerService.listDatabases(this.container);
 
@@ -181,8 +181,9 @@ export class ContainerClient extends EventEmitter {
       throw new Error(`Database "${database}" does not exist`);
     }
 
-    // Update the current database
+    // Update the current database and password
     this.database = database;
+    this.password = password || this.password; // Use provided password or fallback to existing one
     this.connectionParameters.database = database;
   }
 
@@ -357,18 +358,19 @@ export class ContainerClient extends EventEmitter {
         }
         case "use": {
           if (args.length < 2) {
-            console.log(chalk.yellow("Usage: .docker use <dbName>"));
+            console.log(chalk.yellow("Usage: .docker use <dbName> [password]"));
             return;
           }
 
           const dbName = args[1];
+          const password = args[2]; // Optional password argument
           console.log(chalk.cyan(`🔍 Switching to database: ${dbName}...\n`));
 
           const containerClient = this.client as ContainerClient;
 
           try {
-            // Update the connection parameters to use the new database
-            await containerClient.switchDatabase(dbName);
+            // Call the switchDatabase method with the optional password
+            await containerClient.switchDatabase(dbName, password);
 
             // Update the prompt to reflect the new database
             this.dbName = dbName;
