@@ -252,45 +252,82 @@ export class InteractiveCLI {
     try {
         switch (args[0]) {
             case 'health': {
-                console.log(chalk.cyan('🔍 Fetching container health metrics...\n'));
+                await this.showContainerHealth();
+                break;
+            }
+            case 'networks': {
+                console.log(chalk.cyan('🔍 Fetching Docker networks...\n'));
+                const networks = await this.executeCommand(
+                    `docker network ls --format "{{.Name}}|{{.Driver}}|{{.Scope}}"`
+                );
 
-                const containerClient = this.client as ContainerClient;
-                const containerId = containerClient.getContainerId();
-
-                if (!containerId) {
-                    throw new Error('Container ID not available');
+                if (!networks || networks.trim() === '') {
+                    console.log(chalk.yellow('No Docker networks found.'));
+                    return;
                 }
 
+                console.log(chalk.bold('📋 Docker Networks:'));
+                console.log('─'.repeat(40));
+                console.log(`${chalk.dim('Name')}    ${chalk.dim('Driver')}    ${chalk.dim('Scope')}`);
+                console.log('─'.repeat(40));
+
+                networks.split('\n').forEach(network => {
+                    const [name, driver, scope] = network.split('|');
+                    if (name && driver && scope) {
+                        console.log(`${chalk.green(name)}    ${chalk.yellow(driver)}    ${chalk.blue(scope)}`);
+                    }
+                });
+                break;
+            }
+            case 'dbs': {
+                console.log(chalk.cyan('🔍 Fetching available databases...\n'));
+
+                const containerClient = this.client as ContainerClient;
+                const container = containerClient.getContainerInfo();
+
                 try {
-                    // Fetch container status
-                    const status = await this.executeCommand(
-                        `docker inspect -f '{{.State.Status}}' ${containerId}`
+                    const databases = await this.executeCommand(
+                        `docker exec ${container.id} mysql -uroot -padmin#123 -e "SHOW DATABASES;" --silent`
                     );
 
-                    // Fetch container stats
-                    const stats = await this.executeCommand(
-                        `docker stats ${containerId} --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}"`
-                    );
+                    if (!databases || databases.trim() === '') {
+                        console.log(chalk.yellow('No databases found.'));
+                        return;
+                    }
 
-                    const [cpu, memory, network] = stats.split('|');
-
-                    // Fetch container uptime
-                    const created = await this.executeCommand(
-                        `docker inspect -f '{{.Created}}' ${containerId}`
-                    );
-
-                    const uptime = this.formatUptime(new Date().getTime() - new Date(created).getTime());
-
-                    // Format and display output
-                    console.log(chalk.bold('📊 Container Health:'));
+                    console.log(chalk.bold('📋 Available Databases:'));
                     console.log('─'.repeat(40));
-                    console.log(`${chalk.dim('Status')}    ${this.formatStatus(status)}`);
-                    console.log(`${chalk.dim('Uptime')}    ${chalk.blue(uptime)}`);
-                    console.log(`${chalk.dim('CPU')}       ${this.formatCPU(cpu)}`);
-                    console.log(`${chalk.dim('Memory')}    ${this.formatMemory(memory)}`);
-                    console.log(`${chalk.dim('Network')}   ${this.formatNetwork(network)}`);
+                    databases.split('\n').forEach(db => {
+                        console.log(`${chalk.green(db.trim())}`);
+                    });
                 } catch (error) {
-                    throw new Error(`Failed to fetch container health: ${(error as Error).message}`);
+                    throw new Error(`Failed to fetch databases: ${(error as Error).message}`);
+                }
+                break;
+            }
+            case 'use': {
+                if (args.length < 2) {
+                    console.log(chalk.yellow('Usage: .docker use <dbName>'));
+                    return;
+                }
+
+                const dbName = args[1];
+                console.log(chalk.cyan(`🔍 Switching to database: ${dbName}...\n`));
+
+                const containerClient = this.client as ContainerClient;
+
+                try {
+                    // Call the switchDatabase method
+                    await containerClient.switchDatabase(dbName);
+
+                    // Update the prompt to reflect the new database
+                    this.dbName = dbName;
+                    this.rl.setPrompt(`${chalk.green(`mysql:${dbName}> `)}`);
+                    this.prompt();
+
+                    console.log(chalk.green(`📊 Successfully switched to database: ${dbName}`));
+                } catch (error) {
+                    throw new Error(`Failed to switch database: ${(error as Error).message}`);
                 }
                 break;
             }
