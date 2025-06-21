@@ -13,6 +13,75 @@ export interface TableReference {
   alias?: string;
 }
 
+export class SQLParser {
+  /**
+   * Extract table relationships from a SQL query
+   */
+  parseRelationships(query: string): TableRelationship[] {
+    // Extract JOIN conditions
+    const joinPattern = /(\w+)\s+(?:LEFT|RIGHT|INNER|OUTER)?\s*JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)/gi;
+    const relationships: TableRelationship[] = [];
+    
+    let match;
+    while ((match = joinPattern.exec(query)) !== null) {
+        relationships.push({
+            sourceTable: match[1],
+            targetTable: match[2],
+            sourceColumn: match[4],
+            targetColumn: match[6],
+            joinType: 'LEFT JOIN'
+        });
+    }
+    
+    return relationships;
+  }
+
+  parseQuery(query: string): {
+    tables: string[];
+    relationships: TableRelationship[];
+  } {
+    // Remove quotes and normalize query
+    query = query.replace(/["']/g, '').replace(/\s+/g, ' ').trim();
+
+    const tables: string[] = [];
+    const relationships: TableRelationship[] = [];
+
+    // Extract table name from simple SELECT
+    const simpleSelectMatch = query.match(/FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)/i);
+    if (simpleSelectMatch) {
+        tables.push(simpleSelectMatch[1]);
+    }
+
+    // Extract table from complex queries with FROM clause
+    const fromMatch = query.match(/FROM\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:AS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)?/i);
+    if (fromMatch && !tables.includes(fromMatch[1])) {
+        tables.push(fromMatch[1]);
+    }
+
+    // Extract JOIN relationships
+    const joinRegex = /(?:LEFT|RIGHT|INNER|OUTER)?\s*JOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:AS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s+ON\s+([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+        
+    let joinMatch;
+    while ((joinMatch = joinRegex.exec(query)) !== null) {
+        const [, tableName, , leftTable, leftCol, rightTable, rightCol] = joinMatch;
+        
+        if (!tables.includes(tableName)) {
+            tables.push(tableName);
+        }
+
+        relationships.push({
+            sourceTable: leftTable,
+            targetTable: rightTable,
+            sourceColumn: leftCol,
+            targetColumn: rightCol,
+            joinType: 'LEFT JOIN'
+        });
+    }
+
+    return { tables, relationships };
+  }
+}
+
 export class SQLRelationshipExtractor {
   private parser: Parser;
 

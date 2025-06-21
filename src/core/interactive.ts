@@ -14,6 +14,7 @@ import { DockerConnector } from '../core/docker/dockerConnector';
 import { ContainerClient } from './docker/containerClient';
 import { UniversalClient } from './connect';
 import { ExportFormat, ExportOptions } from './export/exporter';
+import { DiagramRenderer } from './visualization/diagramRenderer';
 
 export class InteractiveCLI {
   private rl: readline.Interface;
@@ -166,108 +167,211 @@ export class InteractiveCLI {
     this.prompt();
   }
   
-  private async handleDotCommand(command: string) {
-    const parts = command.slice(1).split(/\s+/);
-    const cmd = parts[0].toLowerCase();
+  private async handleDotCommand(command: string): Promise<void> {
+    // Split the command and arguments
+    const parts = command.slice(1).split(' ');
+    const cmd = parts[0];
+    const args = parts.slice(1).join(' ').replace(';', ''); // Remove trailing semicolon
+
+    try {
+        switch (cmd) {
+            case 'exit':
+            case 'quit':
+                await this.close();
+                return;
+                
+            case 'help':
+                this.showHelp();
+                break;
+                
+            case 'history':
+                await this.showHistory(parts.slice(1));
+                break;
+                
+            case 'clear':
+                if (parts[1] === 'history') {
+                    this.historyManager.clear();
+                    console.log(chalk.green('History cleared'));
+                } else {
+                    // Clear screen
+                    console.clear();
+                }
+                break;
+                
+            case 'search':
+                const searchTerm = parts.slice(1).join(' ');
+                await this.searchHistory(searchTerm);
+                break;
+                
+            case 'run':
+                const historyIndex = parseInt(parts[1]);
+                await this.runHistoryItem(historyIndex);
+                break;
+                
+            case 'perf':
+            case 'performance':
+                await this.showPerformanceStats(parts.slice(1));
+                break;
+                
+            case 'similar':
+                if (parts.length < 2) {
+                    console.log(chalk.yellow('Usage: .similar <query-id>'));
+                    break;
+                }
+                await this.showSimilarQueries(parts[1]);
+                break;
+                
+            case 'explain':
+                if (parts.length < 2) {
+                    console.log(chalk.yellow('Usage: .explain <query>'));
+                    break;
+                }
+                await this.explainQuery(parts.slice(1).join(' '));
+                break;
+                
+            case 'docker':
+                if (this.isDockerClient) {
+                    await this.handleDockerCommand(parts.slice(1));
+                } else {
+                    console.log(chalk.yellow('Not connected to a Docker container. Use "tq --docker" to start in Docker mode.'));
+                }
+                break;
+                
+            case 'visualize':
+            case 'viz':
+                if (parts.length < 2) {
+                    console.log(chalk.yellow('Usage: .visualize <query>'));
+                    break;
+                }
+                await this.visualizeQuery(parts.slice(1).join(' '));
+                break;
+                
+            case 'vq':
+                // Visualize from history
+                if (parts.length < 2 || isNaN(parseInt(parts[1]))) {
+                    console.log(chalk.yellow('Usage: .vq <history-number>'));
+                    break;
+                }
+                const index = parseInt(parts[1]);
+                const entries = this.historyManager.getEntries();
+                if (index <= 0 || index > entries.length) {
+                    console.log(chalk.red(`History item #${index} not found`));
+                    break;
+                }
+                const query = entries[index - 1].query;
+                await this.visualizeQuery(query);
+                break;
+        
+            case 'export':
+            case 'save':
+                await this.exportResults(parts.slice(1));
+                break;
+                
+            case 'schema': {
+                if (!args) {
+                    console.log(chalk.yellow('Usage: .schema <table_name>'));
+                    return;
+                }
+
+                const tableName = args;
+                console.log(chalk.cyan(`Schema for table: ${tableName}`));
+
+                try {
+                    // For MySQL in Docker
+                    if (this.isDockerClient) {
+                        const result = await this.client.query(`
+                            SELECT 
+                                COLUMN_NAME as Field,
+                                COLUMN_TYPE as Type,
+                                IS_NULLABLE as 'Null',
+                                COLUMN_KEY as 'Key',
+                                COLUMN_DEFAULT as 'Default',
+                                EXTRA as Extra
+                            FROM information_schema.columns 
+                            WHERE table_schema = '${this.dbName}'
+                            AND table_name = '${tableName}'
+                            ORDER BY ORDINAL_POSITION;
+                        `);
+
+                        if (!result.rows || result.rows.length === 0) {
+                            console.log(chalk.red(`No schema found for table: ${tableName}`));
+                            return;
+                        }
+
+                        // Print header
+                        console.log(chalk.bold('\nField\tType\tNull\tKey\tDefault\tExtra'));
+                        console.log(chalk.dim('─'.repeat(80)));
+
+                        // Print rows
+                        result.rows.forEach(row => {
+                            console.log(
+                                `${chalk.green(row.Field)}\t` +
+                                `${chalk.yellow(row.Type)}\t` +
+                                `${row.Null === 'YES' ? 'YES' : 'NO'}\t` +
+                                `${row.Key || '-'}\t` +
+                                `${row.Default || 'NULL'}\t` +
+                                `${row.Extra || '-'}`
+                            );
+                        });
+
+                        // Additional schema information
+                        console.log(chalk.dim('\nIndexes:'));
+                        const indexResult = await this.client.query(`
+                            SHOW INDEX FROM ${tableName} FROM ${this.dbName};
+                        `);
+
+                        if (indexResult.rows && indexResult.rows.length > 0) {
+                            indexResult.rows.forEach(idx => {
+                                console.log(
+                                    `  ${chalk.blue(idx.Key_name)} ${
+                                        idx.Non_unique === 0 ? '(unique)' : ''
+                                    } on ${chalk.green(idx.Column_name)}`
+                                );
+                            });
+                        } else {
+                            console.log(chalk.dim('  No indexes'));
+                        }
+
+                        // Show foreign keys
+                        console.log(chalk.dim('\nForeign Keys:'));
+                        const fkResult = await this.client.query(`
+                            SELECT 
+                                CONSTRAINT_NAME,
+                                COLUMN_NAME,
+                                REFERENCED_TABLE_NAME,
+                                REFERENCED_COLUMN_NAME
+                            FROM information_schema.KEY_COLUMN_USAGE
+                            WHERE TABLE_SCHEMA = '${this.dbName}'
+                                AND TABLE_NAME = '${tableName}'
+                                AND REFERENCED_TABLE_NAME IS NOT NULL;
+                        `);
+
+                        if (fkResult.rows && fkResult.rows.length > 0) {
+                            fkResult.rows.forEach(fk => {
+                                console.log(
+                                    `  ${chalk.green(fk.COLUMN_NAME)} → ${
+                                        chalk.blue(fk.REFERENCED_TABLE_NAME)
+                                    }.${chalk.green(fk.REFERENCED_COLUMN_NAME)}`
+                                );
+                            });
+                        } else {
+                            console.log(chalk.dim('  No foreign keys'));
+                        }
+                    }
+                } catch (error) {
+                    console.error(chalk.red(`Error fetching schema: ${(error as Error).message}`));
+                }
+                break;
+            }
     
-    switch (cmd) {
-      case 'exit':
-      case 'quit':
-        await this.close();
-        return;
-        
-      case 'help':
-        this.showHelp();
-        break;
-        
-      case 'history':
-        await this.showHistory(parts.slice(1));
-        break;
-        
-      case 'clear':
-        if (parts[1] === 'history') {
-          this.historyManager.clear();
-          console.log(chalk.green('History cleared'));
-        } else {
-          // Clear screen
-          console.clear();
+            default:
+                console.log(chalk.red(`Unknown command: ${cmd}`));
+                console.log('Type .help for available commands');
         }
-        break;
-        
-      case 'search':
-        const searchTerm = parts.slice(1).join(' ');
-        await this.searchHistory(searchTerm);
-        break;
-        
-      case 'run':
-        const historyIndex = parseInt(parts[1]);
-        await this.runHistoryItem(historyIndex);
-        break;
-        
-      case 'perf':
-      case 'performance':
-        await this.showPerformanceStats(parts.slice(1));
-        break;
-        
-      case 'similar':
-        if (parts.length < 2) {
-          console.log(chalk.yellow('Usage: .similar <query-id>'));
-          break;
-        }
-        await this.showSimilarQueries(parts[1]);
-        break;
-        
-      case 'explain':
-        if (parts.length < 2) {
-          console.log(chalk.yellow('Usage: .explain <query>'));
-          break;
-        }
-        await this.explainQuery(parts.slice(1).join(' '));
-        break;
-        
-      case 'docker':
-        if (this.isDockerClient) {
-          await this.handleDockerCommand(parts.slice(1));
-        } else {
-          console.log(chalk.yellow('Not connected to a Docker container. Use "tq --docker" to start in Docker mode.'));
-        }
-        break;
-        
-      case 'visualize':
-      case 'viz':
-        if (parts.length < 2) {
-          console.log(chalk.yellow('Usage: .visualize <query>'));
-          break;
-        }
-        await this.visualizeQuery(parts.slice(1).join(' '));
-        break;
-        
-      case 'vq':
-        // Visualize from history
-        if (parts.length < 2 || isNaN(parseInt(parts[1]))) {
-          console.log(chalk.yellow('Usage: .vq <history-number>'));
-          break;
-        }
-        const index = parseInt(parts[1]);
-        const entries = this.historyManager.getEntries();
-        if (index <= 0 || index > entries.length) {
-          console.log(chalk.red(`History item #${index} not found`));
-          break;
-        }
-        const query = entries[index - 1].query;
-        await this.visualizeQuery(query);
-        break;
-    
-      case 'export':
-      case 'save':
-        await this.exportResults(parts.slice(1));
-        break;
-        
-      default:
-        console.log(chalk.red(`Unknown command: ${cmd}`));
-        console.log('Type .help for available commands');
+    } catch (error) {
+        console.error(chalk.red(`Error executing command: ${(error as Error).message}`));
     }
-    
+
     this.prompt();
   }
   
@@ -818,56 +922,24 @@ export class InteractiveCLI {
     }
   }
   
-  private async visualizeQuery(sql: string) {
+  private async visualizeQuery(query: string): Promise<void> {
     try {
-      // Import the visualization modules
-      const { SQLRelationshipExtractor } = await import('./visualization/sqlParser');
-      const { DiagramRenderer } = await import('./visualization/diagramRenderer');
-      
-      // Parse the query
-      const parser = new SQLRelationshipExtractor();
-      const relationships = parser.extractRelationships(sql);
-      const tableReferences = parser.extractTableReferences(sql);
-      
-      if (tableReferences.length === 0) {
-        console.log(chalk.yellow('No tables found in the query.'));
-        return;
-      }
-      
-      console.log(chalk.cyan('Visualizing query relationships:'));
-      console.log('');
-      
-      // Get schema for tables in the query
-      const schema = await loadSchema(this.client);
-      
-      // Create and render the diagram
-      const renderer = new DiagramRenderer();
-      const diagram = renderer.renderRelationshipDiagram(
-        relationships,
-        tableReferences,
-        schema
-      );
-      
-      console.log(diagram);
-      console.log('');
-      
-      // Show table statistics
-      console.log(chalk.cyan('Query complexity:'));
-      console.log(`Tables: ${tableReferences.length}`);
-      console.log(`Relationships: ${relationships.length}`);
-      
-      // Show table aliases if any
-      const aliases = tableReferences.filter(ref => ref.alias && ref.alias !== ref.table);
-      if (aliases.length > 0) {
-        console.log('');
-        console.log(chalk.cyan('Table aliases:'));
-        aliases.forEach(ref => {
-          console.log(`${ref.table} AS ${ref.alias}`);
-        });
-      }
-      
+        console.log(chalk.cyan('\n🔍 Fetching fresh schema...'));
+        
+        // Get schema
+        const schema = await loadSchema(this.client);
+        
+        // Create renderer instance
+        const renderer = new DiagramRenderer();
+        
+        // Render the diagram
+        const diagram = renderer.renderRelationshipDiagram(query, schema);
+        
+        // Display the result
+        console.log(diagram);
+        
     } catch (error) {
-      console.error(chalk.red(`Error visualizing query: ${(error as Error).message}`));
+        console.error(chalk.red(`Error visualizing query: ${(error as any).message}`));
     }
   }
   
