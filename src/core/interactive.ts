@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import chalk from 'chalk';
 import readline from 'readline';
 import figures from 'figures';
@@ -171,7 +172,7 @@ export class InteractiveCLI {
     // Split the command and arguments
     const parts = command.slice(1).split(' ');
     const cmd = parts[0];
-    const args = parts.slice(1).join(' ').replace(';', ''); // Remove trailing semicolon
+    const args = parts.slice(1);
 
     try {
         switch (cmd) {
@@ -185,11 +186,11 @@ export class InteractiveCLI {
                 break;
                 
             case 'history':
-                await this.showHistory(parts.slice(1));
+                await this.showHistory(args);
                 break;
                 
             case 'clear':
-                if (parts[1] === 'history') {
+                if (args[0] === 'history') {
                     this.historyManager.clear();
                     console.log(chalk.green('History cleared'));
                 } else {
@@ -199,174 +200,41 @@ export class InteractiveCLI {
                 break;
                 
             case 'search':
-                const searchTerm = parts.slice(1).join(' ');
+                const searchTerm = args.join(' ');
                 await this.searchHistory(searchTerm);
                 break;
                 
             case 'run':
-                const historyIndex = parseInt(parts[1]);
+                const historyIndex = parseInt(args[0]);
                 await this.runHistoryItem(historyIndex);
                 break;
                 
             case 'perf':
             case 'performance':
-                await this.showPerformanceStats(parts.slice(1));
+                await this.showPerformanceStats(args);
                 break;
                 
             case 'similar':
-                if (parts.length < 2) {
+                if (args.length < 1) {
                     console.log(chalk.yellow('Usage: .similar <query-id>'));
                     break;
                 }
-                await this.showSimilarQueries(parts[1]);
+                await this.showSimilarQueries(args[0]);
                 break;
                 
             case 'explain':
-                if (parts.length < 2) {
+                if (args.length < 1) {
                     console.log(chalk.yellow('Usage: .explain <query>'));
                     break;
                 }
-                await this.explainQuery(parts.slice(1).join(' '));
+                await this.explainQuery(args.join(' '));
                 break;
                 
             case 'docker':
-                if (this.isDockerClient) {
-                    await this.handleDockerCommand(parts.slice(1));
-                } else {
-                    console.log(chalk.yellow('Not connected to a Docker container. Use "tq --docker" to start in Docker mode.'));
-                }
+                await this.handleDockerCommand(args);
                 break;
                 
-            case 'visualize':
-            case 'viz':
-                if (parts.length < 2) {
-                    console.log(chalk.yellow('Usage: .visualize <query>'));
-                    break;
-                }
-                await this.visualizeQuery(parts.slice(1).join(' '));
-                break;
-                
-            case 'vq':
-                // Visualize from history
-                if (parts.length < 2 || isNaN(parseInt(parts[1]))) {
-                    console.log(chalk.yellow('Usage: .vq <history-number>'));
-                    break;
-                }
-                const index = parseInt(parts[1]);
-                const entries = this.historyManager.getEntries();
-                if (index <= 0 || index > entries.length) {
-                    console.log(chalk.red(`History item #${index} not found`));
-                    break;
-                }
-                const query = entries[index - 1].query;
-                await this.visualizeQuery(query);
-                break;
-        
-            case 'export':
-            case 'save':
-                await this.exportResults(parts.slice(1));
-                break;
-                
-            case 'schema': {
-                if (!args) {
-                    console.log(chalk.yellow('Usage: .schema <table_name>'));
-                    return;
-                }
-
-                const tableName = args;
-                console.log(chalk.cyan(`Schema for table: ${tableName}`));
-
-                try {
-                    // For MySQL in Docker
-                    if (this.isDockerClient) {
-                        const result = await this.client.query(`
-                            SELECT 
-                                COLUMN_NAME as Field,
-                                COLUMN_TYPE as Type,
-                                IS_NULLABLE as 'Null',
-                                COLUMN_KEY as 'Key',
-                                COLUMN_DEFAULT as 'Default',
-                                EXTRA as Extra
-                            FROM information_schema.columns 
-                            WHERE table_schema = '${this.dbName}'
-                            AND table_name = '${tableName}'
-                            ORDER BY ORDINAL_POSITION;
-                        `);
-
-                        if (!result.rows || result.rows.length === 0) {
-                            console.log(chalk.red(`No schema found for table: ${tableName}`));
-                            return;
-                        }
-
-                        // Print header
-                        console.log(chalk.bold('\nField\tType\tNull\tKey\tDefault\tExtra'));
-                        console.log(chalk.dim('─'.repeat(80)));
-
-                        // Print rows
-                        result.rows.forEach(row => {
-                            console.log(
-                                `${chalk.green(row.Field)}\t` +
-                                `${chalk.yellow(row.Type)}\t` +
-                                `${row.Null === 'YES' ? 'YES' : 'NO'}\t` +
-                                `${row.Key || '-'}\t` +
-                                `${row.Default || 'NULL'}\t` +
-                                `${row.Extra || '-'}`
-                            );
-                        });
-
-                        // Additional schema information
-                        console.log(chalk.dim('\nIndexes:'));
-                        const indexResult = await this.client.query(`
-                            SHOW INDEX FROM ${tableName} FROM ${this.dbName};
-                        `);
-
-                        if (indexResult.rows && indexResult.rows.length > 0) {
-                            indexResult.rows.forEach(idx => {
-                                console.log(
-                                    `  ${chalk.blue(idx.Key_name)} ${
-                                        idx.Non_unique === 0 ? '(unique)' : ''
-                                    } on ${chalk.green(idx.Column_name)}`
-                                );
-                            });
-                        } else {
-                            console.log(chalk.dim('  No indexes'));
-                        }
-
-                        // Show foreign keys
-                        console.log(chalk.dim('\nForeign Keys:'));
-                        const fkResult = await this.client.query(`
-                            SELECT 
-                                CONSTRAINT_NAME,
-                                COLUMN_NAME,
-                                REFERENCED_TABLE_NAME,
-                                REFERENCED_COLUMN_NAME
-                            FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE TABLE_SCHEMA = '${this.dbName}'
-                                AND TABLE_NAME = '${tableName}'
-                                AND REFERENCED_TABLE_NAME IS NOT NULL;
-                        `);
-
-                        if (fkResult.rows && fkResult.rows.length > 0) {
-                            fkResult.rows.forEach(fk => {
-                                console.log(
-                                    `  ${chalk.green(fk.COLUMN_NAME)} → ${
-                                        chalk.blue(fk.REFERENCED_TABLE_NAME)
-                                    }.${chalk.green(fk.REFERENCED_COLUMN_NAME)}`
-                                );
-                            });
-                        } else {
-                            console.log(chalk.dim('  No foreign keys'));
-                        }
-                    }
-                } catch (error) {
-                    console.error(chalk.red(`Error fetching schema: ${(error as Error).message}`));
-                }
-                break;
-            }
-    
-            default:
-                console.log(chalk.red(`Unknown command: ${cmd}`));
-                console.log('Type .help for available commands');
+            // ...existing code for other commands...
         }
     } catch (error) {
         console.error(chalk.red(`Error executing command: ${(error as Error).message}`));
@@ -374,6 +242,147 @@ export class InteractiveCLI {
 
     this.prompt();
   }
+  
+  private async handleDockerCommand(args: string[]): Promise<void> {
+    if (!this.isDockerClient) {
+        console.log(chalk.yellow('Not connected to a Docker container.'));
+        return;
+    }
+
+    try {
+        switch (args[0]) {
+            case 'health': {
+                console.log(chalk.cyan('🔍 Fetching container health metrics...\n'));
+
+                const containerClient = this.client as ContainerClient;
+                const containerId = containerClient.getContainerId();
+
+                if (!containerId) {
+                    throw new Error('Container ID not available');
+                }
+
+                try {
+                    // Fetch container status
+                    const status = await this.executeCommand(
+                        `docker inspect -f '{{.State.Status}}' ${containerId}`
+                    );
+
+                    // Fetch container stats
+                    const stats = await this.executeCommand(
+                        `docker stats ${containerId} --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}"`
+                    );
+
+                    const [cpu, memory, network] = stats.split('|');
+
+                    // Fetch container uptime
+                    const created = await this.executeCommand(
+                        `docker inspect -f '{{.Created}}' ${containerId}`
+                    );
+
+                    const uptime = this.formatUptime(new Date().getTime() - new Date(created).getTime());
+
+                    // Format and display output
+                    console.log(chalk.bold('📊 Container Health:'));
+                    console.log('─'.repeat(40));
+                    console.log(`${chalk.dim('Status')}    ${this.formatStatus(status)}`);
+                    console.log(`${chalk.dim('Uptime')}    ${chalk.blue(uptime)}`);
+                    console.log(`${chalk.dim('CPU')}       ${this.formatCPU(cpu)}`);
+                    console.log(`${chalk.dim('Memory')}    ${this.formatMemory(memory)}`);
+                    console.log(`${chalk.dim('Network')}   ${this.formatNetwork(network)}`);
+                } catch (error) {
+                    throw new Error(`Failed to fetch container health: ${(error as Error).message}`);
+                }
+                break;
+            }
+            default:
+                console.log(chalk.yellow('Unknown docker command. Type .help for available commands.'));
+        }
+    } catch (error) {
+        console.error(chalk.red(`Docker command error: ${(error as Error).message}`));
+    }
+}
+
+private async showContainerHealth(): Promise<void> {
+    const containerClient = this.client as ContainerClient;
+    const containerId = containerClient.getContainerId();
+    
+    if (!containerId) {
+        throw new Error('Container ID not available');
+    }
+
+    console.log(chalk.cyan('🔍 Fetching container health metrics...\n'));
+    
+    try {
+        // Get container status
+        const status = (await this.executeCommand(
+            `docker inspect -f '{{.State.Status}}' ${containerId}`
+        )).trim();
+
+        // Get container stats
+        const stats = (await this.executeCommand(
+            `docker stats ${containerId} --no-stream --format "{{.CPUPerc}}|{{.MemUsage}}|{{.NetIO}}"`
+        )).trim();
+
+        const [cpu, memory, network] = stats.split('|');
+
+        // Get container uptime
+        const created = (await this.executeCommand(
+            `docker inspect -f '{{.Created}}' ${containerId}`
+        )).trim();
+
+        const uptime = this.formatUptime(new Date().getTime() - new Date(created).getTime());
+
+        // Format and display output
+        console.log(chalk.bold('📊 Container Health:'));
+        console.log('─'.repeat(40));
+        console.log(`${chalk.dim('Status')}    ${this.formatStatus(status)}`);
+        console.log(`${chalk.dim('Uptime')}    ${chalk.blue(uptime)}`);
+        console.log(`${chalk.dim('CPU')}       ${this.formatCPU(cpu)}`);
+        console.log(`${chalk.dim('Memory')}    ${this.formatMemory(memory)}`);
+        console.log(`${chalk.dim('Network')}   ${this.formatNetwork(network)}`);
+
+    } catch (error) {
+        throw new Error(`Failed to fetch container health: ${(error as Error).message}`);
+    }
+}
+
+private formatStatus(status: string): string {
+    const colors: { [key: string]: (text: string) => string } = {
+        'running': chalk.green,
+        'exited': chalk.red,
+        'paused': chalk.yellow,
+        'restarting': chalk.blue
+    };
+    return (colors[status] || chalk.gray)(status);
+}
+
+private formatUptime(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+    return `${seconds}s`;
+}
+
+private formatCPU(cpu: string): string {
+    const value = parseFloat(cpu);
+    if (value > 90) return chalk.red(cpu);
+    if (value > 70) return chalk.yellow(cpu);
+    return chalk.green(cpu);
+}
+
+private formatMemory(memory: string): string {
+    return chalk.blue(memory);
+}
+
+private formatNetwork(network: string): string {
+    const [rx, tx] = network.split(' / ');
+    return chalk.cyan(`↓${rx} / ↑${tx}`);
+}
   
   private async showHistory(args: string[]) {
     const limit = args.length > 0 ? parseInt(args[0]) : 10;
@@ -806,122 +815,6 @@ export class InteractiveCLI {
     console.log('');
   }
   
-  private async handleDockerCommand(args: string[]) {
-    if (!this.isDockerClient) {
-      console.log(chalk.yellow('Not connected to a Docker container.'));
-      return;
-    }
-    
-    const containerClient = this.client as ContainerClient;
-    const container = containerClient.getContainerInfo();
-    
-    if (args.length === 0 || args[0] === 'info') {
-      // Show container info
-      console.log(chalk.cyan('Container information:'));
-      console.log(chalk.white(`Name: ${container.name}`));
-      console.log(chalk.white(`Image: ${container.image}`));
-      console.log(chalk.white(`ID: ${container.id}`));
-      console.log(chalk.white(`Status: ${container.status}`));
-      console.log(chalk.white(`Database type: ${container.dbType}`));
-      console.log(chalk.white(`Current database: ${this.dbName}`));
-      
-    } else if (args[0] === 'health') {
-      // Show container health stats
-      console.log(chalk.cyan('Fetching container health information...'));
-      
-      // Import the health monitor class
-      const { DockerHealthMonitor } = await import('./docker/dockerHealth');
-      const healthMonitor = new DockerHealthMonitor();
-      
-      const health = await healthMonitor.getContainerHealth(container);
-      
-      // Display health info with appropriate colors
-      console.log(chalk.cyan('Container health:'));
-      
-      // Color status based on health
-      let statusColor = chalk.yellow;
-      if (health.status === 'healthy') statusColor = chalk.green;
-      if (health.status === 'unhealthy') statusColor = chalk.red;
-      
-      console.log(`Status: ${statusColor(health.status)}`);
-      console.log(`Uptime: ${chalk.white(health.uptime)}`);
-      console.log(`CPU: ${chalk.white(health.cpuUsage)}`);
-      console.log(`Memory: ${chalk.white(health.memoryUsage)} / ${health.memoryLimit}`);
-      console.log(`Network: ↓${chalk.blue(health.networkRx)} / ↑${chalk.magenta(health.networkTx)}`);
-
-    } else if (args[0] === 'networks') {
-      // List Docker networks
-      const { DockerService } = await import('./docker/dockerService');
-      const dockerService = new DockerService();
-      
-      const networks = await dockerService.getDockerNetworks();
-      
-      console.log(chalk.cyan('Docker networks:'));
-      for (const network of networks) {
-        console.log(chalk.white(` • ${network}`));
-      }
-
-    } else if (args[0] === 'network' && args[1]) {
-      // List containers in a specific network
-      const networkName = args[1];
-      const { DockerService } = await import('./docker/dockerService');
-      const dockerService = new DockerService();
-      
-      const containers = await dockerService.getContainersInNetwork(networkName);
-      
-      if (containers.length === 0) {
-        console.log(chalk.yellow(`No database containers found in network "${networkName}"`));
-        return;
-      }
-      
-      console.log(chalk.cyan(`Containers in network "${networkName}":`));
-      containers.forEach((container, i) => {
-        console.log(chalk.white(`${i + 1}. ${container.name} - ${container.image}`));
-        if (container.dbType !== 'unknown') {
-          console.log(chalk.gray(`   Type: ${container.dbType} database`));
-        }
-      });
-    
-    } else if (args[0] === 'databases' || args[0] === 'dbs') {
-      // List databases in container
-      const dockerConnector = new DockerConnector();
-      const databases = await dockerConnector.dockerService.listDatabases(container);
-      
-      console.log(chalk.cyan('Available databases:'));
-      databases.forEach(db => {
-        const isCurrent = db === this.dbName;
-        console.log(`${isCurrent ? chalk.green('→ ') : '  '}${db}`);
-      });
-      
-    } else if (args[0] === 'use' && args[1]) {
-      // Switch database
-      const newDb = args[1];
-      
-      try {
-        await containerClient.useDatabase(newDb);
-        this.dbName = newDb;
-        console.log(chalk.green(`Switched to database: ${newDb}`));
-        
-        // Reload schema for the new database
-        console.log(chalk.cyan('Loading schema...'));
-        const schema = await loadSchema(this.client);
-        this.completer.loadSchema(schema);
-        console.log(chalk.green(`Loaded schema with ${Object.keys(schema).length} tables`));
-        
-      } catch (error) {
-        console.error(chalk.red(`Error switching database: ${(error as Error).message}`));
-      }
-    } else {
-      console.log(chalk.yellow('Docker commands:'));
-      console.log('  .docker info         Show container information');
-      console.log('  .docker health       Show container health metrics');
-      console.log('  .docker dbs          List available databases');
-      console.log('  .docker use <dbname>  Switch to another database');
-      console.log('  .docker networks     List Docker networks');
-      console.log('  .docker network <name>  Show containers in network');
-    }
-  }
-  
   private async visualizeQuery(query: string): Promise<void> {
     try {
         console.log(chalk.cyan('\n🔍 Fetching fresh schema...'));
@@ -992,5 +885,18 @@ export class InteractiveCLI {
     await this.client.end();
     console.log(chalk.green('Disconnected from database. Goodbye!'));
     process.exit(0);
+  }
+  
+  // Add helper method for executing shell commands
+  private async executeCommand(command: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                reject(new Error(stderr || error.message));
+                return;
+            }
+            resolve(stdout.trim());
+        });
+    });
   }
 }

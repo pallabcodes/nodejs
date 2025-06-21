@@ -26,6 +26,7 @@ export class ContainerClient extends EventEmitter {
   private database: string;
   public connectionParameters: ConnectionParameters;
   private password: string;
+  private containerId: string;
 
   constructor(
     container: DockerContainer, 
@@ -39,6 +40,7 @@ export class ContainerClient extends EventEmitter {
     this.database = database;
     this.username = username;
     this.password = password;
+    this.containerId = container.id;
     
     // For API compatibility with pg.Client
     this.connectionParameters = {
@@ -47,6 +49,11 @@ export class ContainerClient extends EventEmitter {
       host: `docker:${container.name}`,
       container: container.name
     };
+  }
+
+  // Add this method to get container ID
+  getContainerId(): string {
+    return this.containerId;
   }
 
   /**

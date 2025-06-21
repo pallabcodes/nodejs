@@ -399,4 +399,70 @@ export class DockerService {
       return [];
     }
   }
+
+  /**
+   * Get container health information
+   */
+  async getContainerHealth(containerId: string): Promise<{
+    status: string;
+    uptime: string;
+    cpu: string;
+    memory: string;
+    network: { rx: string; tx: string };
+  }> {
+    try {
+      // Get container stats
+      const stats = await execAsync(`docker stats ${containerId} --no-stream --format "{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"`);
+      const [cpu, memory, netIO] = stats.stdout.split('\t');
+      
+      // Get container information
+      const info = await execAsync(`docker inspect ${containerId}`);
+      const containerInfo = JSON.parse(info.stdout)[0];
+      
+      // Calculate uptime
+      const startTime = new Date(containerInfo.State.StartedAt);
+      const uptime = this.formatUptime(Date.now() - startTime.getTime());
+      
+      // Get status (running, exited, etc.)
+      const status = containerInfo.State.Status;
+      
+      // Parse network stats
+      const [rx, tx] = netIO.split(' / ');
+      
+      return {
+        status: status || 'unknown',
+        uptime: uptime || 'N/A',
+        cpu: cpu || 'N/A',
+        memory: memory || 'N/A',
+        network: {
+          rx: rx || 'N/A',
+          tx: tx || 'N/A'
+        }
+      };
+    } catch (error) {
+      console.error(`Error fetching container health: ${error}`);
+      return {
+        status: 'unknown',
+        uptime: 'N/A',
+        cpu: 'N/A',
+        memory: 'N/A',
+        network: { rx: 'N/A', tx: 'N/A' }
+      };
+    }
+  }
+
+  /**
+   * Format uptime in human-readable form
+   */
+  private formatUptime(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+    return `${seconds}s`;
+  }
 }
