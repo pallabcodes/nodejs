@@ -1182,42 +1182,15 @@ export class InteractiveCLI {
   }
 
   private suggestOptimizations(sql: string, pattern: any) {
-    const lowerSql = sql.toLowerCase();
-    const complexity = pattern.fingerprint.complexity;
-    const suggestions = [];
+    console.log(chalk.cyan("Optimization Suggestions:"));
 
-    // Suggest adding a LIMIT clause
-    if (!complexity.hasLimit && lowerSql.startsWith("select")) {
-      suggestions.push("Add a LIMIT clause to restrict the result set");
-    }
+    this.analyzeIndexes(sql);
+    this.analyzeJoins(sql);
+    this.suggestPartitioning(sql);
+    this.suggestMaterializedViews(sql);
+    this.suggestQueryRewrites(sql);
 
-    // Suggest analyzing join efficiency for complex joins
-    if (complexity.joinCount > 2) {
-      suggestions.push("Review join conditions for potential optimizations");
-    }
-
-    // Suggest indexing for slow queries with WHERE clauses
-    if (pattern.avgDuration > 500 && lowerSql.includes("where")) {
-      suggestions.push(
-        "Consider adding indexes for columns used in WHERE clauses"
-      );
-    }
-
-    // Suggest optimization for slow aggregations
-    if (complexity.hasAggregate && pattern.avgDuration > 500) {
-      suggestions.push(
-        "Aggregation operations are expensive - consider pre-aggregating or using materialized views"
-      );
-    }
-
-    if (suggestions.length > 0) {
-      console.log(chalk.yellow("Optimization suggestions:"));
-      suggestions.forEach((suggestion) => {
-        console.log(`  • ${suggestion}`);
-      });
-    } else {
-      console.log(chalk.green("Query looks well-optimized!"));
-    }
+    console.log(chalk.green("Optimization analysis completed."));
   }
 
   // Helper methods for formatting
@@ -1467,4 +1440,72 @@ export class InteractiveCLI {
       });
     });
   }
+
+  private async analyzeIndexes(sql: string): Promise<void> {
+    const indexQuery = `
+        SELECT
+            table_name,
+            index_name,
+            column_name,
+            non_unique
+        FROM information_schema.statistics
+        WHERE table_schema = '${this.dbName}'
+        ORDER BY table_name, index_name;
+    `;
+
+    const indexes = await this.client.query(indexQuery);
+
+    console.log(chalk.cyan("Index Analysis:"));
+    indexes.rows.forEach((index: any) => {
+        console.log(
+            `  Table: ${chalk.green(index.table_name)}, Index: ${chalk.blue(index.index_name)}, Column: ${chalk.yellow(index.column_name)}, Unique: ${index.non_unique ? "No" : "Yes"}`
+        );
+    });
+
+    // Suggest adding indexes for columns used in WHERE clauses
+    if (sql.toLowerCase().includes("where")) {
+        console.log(chalk.yellow("Consider adding indexes for columns used in WHERE clauses."));
+    }
+}
+
+private async analyzeJoins(sql: string): Promise<void> {
+    const joinRegex = /\bJOIN\b/i;
+    const joinCount = (sql.match(joinRegex) || []).length;
+
+    console.log(chalk.cyan("Join Efficiency Analysis:"));
+    console.log(`  Number of joins: ${chalk.yellow(joinCount)}`);
+
+    if (joinCount > 2) {
+        console.log(chalk.yellow("Consider optimizing join conditions or reducing the number of joins."));
+    }
+}
+
+private async suggestPartitioning(sql: string): Promise<void> {
+    const dateRegex = /\bWHERE\b.*\b(date|timestamp)\b/i;
+
+    if (dateRegex.test(sql)) {
+        console.log(chalk.yellow("Consider partitioning the table by date for faster query performance."));
+    }
+}
+
+private async suggestMaterializedViews(sql: string): Promise<void> {
+    const aggregateRegex = /\b(count|sum|avg|min|max)\s*\(/i;
+
+    if (aggregateRegex.test(sql)) {
+        console.log(chalk.yellow("Consider creating a materialized view for expensive aggregation queries."));
+    }
+}
+
+private async suggestQueryRewrites(sql: string): Promise<void> {
+    const unionRegex = /\bUNION\b/i;
+
+    if (unionRegex.test(sql)) {
+        console.log(chalk.yellow("Consider using UNION ALL instead of UNION for better performance."));
+    }
+
+    const subqueryRegex = /\(\s*SELECT\b/i;
+
+    if (subqueryRegex.test(sql)) {
+        console.log(chalk.yellow("Consider rewriting subqueries as joins for better performance."));
+    }
 }
