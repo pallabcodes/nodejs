@@ -1497,15 +1497,16 @@ private async suggestMaterializedViews(sql: string): Promise<void> {
 }
 
 private async suggestQueryRewrites(sql: string): Promise<void> {
-    const unionRegex = /\bUNION\b/i;
+        const unionRegex = /\bUNION\b/i;
 
-    if (unionRegex.test(sql)) {
-        console.log(chalk.yellow("Consider using UNION ALL instead of UNION for better performance."));
-    }
+        if (unionRegex.test(sql)) {
+            console.log(chalk.yellow("Consider using UNION ALL instead of UNION for better performance."));
+        }
 
-    const subqueryRegex = /\(\s*SELECT\b/i;
+        const subqueryRegex = /\(\s*SELECT\b/i;
 
-    if (subqueryRegex.test(sql)) {
-        console.log(chalk.yellow("Consider rewriting subqueries as joins for better performance."));
+        if (subqueryRegex.test(sql)) {
+            console.log(chalk.yellow("Consider rewriting subqueries as joins for better performance."));
+        }
     }
 }
