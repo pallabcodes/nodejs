@@ -309,106 +309,111 @@ export class InteractiveCLI {
           break;
 
         case "schema": {
-          if (!args) {
-            console.log(chalk.yellow("Usage: .schema <table_name>"));
-            return;
-          }
-
-          const tableName = args;
-          console.log(chalk.cyan(`Schema for table: ${tableName}`));
-
-          try {
-            // For MySQL in Docker
-            if (this.isDockerClient) {
-              const result = await this.client.query(`
-                            SELECT 
-                                COLUMN_NAME as Field,
-                                COLUMN_TYPE as Type,
-                                IS_NULLABLE as 'Null',
-                                COLUMN_KEY as 'Key',
-                                COLUMN_DEFAULT as 'Default',
-                                EXTRA as Extra
-                            FROM information_schema.columns 
-                            WHERE table_schema = '${this.dbName}'
-                            AND table_name = '${tableName}'
-                            ORDER BY ORDINAL_POSITION;
-                        `);
-
-              if (!result.rows || result.rows.length === 0) {
-                console.log(
-                  chalk.red(`No schema found for table: ${tableName}`)
-                );
+            if (!args) {
+                console.log(chalk.yellow("Usage: .schema <table_name>"));
                 return;
-              }
-
-              // Print header
-              console.log(
-                chalk.bold("\nField\tType\tNull\tKey\tDefault\tExtra")
-              );
-              console.log(chalk.dim("─".repeat(80)));
-
-              // Print rows
-              result.rows.forEach((row) => {
-                console.log(
-                  `${chalk.green(row.Field)}\t` +
-                    `${chalk.yellow(row.Type)}\t` +
-                    `${row.Null === "YES" ? "YES" : "NO"}\t` +
-                    `${row.Key || "-"}\t` +
-                    `${row.Default || "NULL"}\t` +
-                    `${row.Extra || "-"}`
-                );
-              });
-
-              // Additional schema information
-              console.log(chalk.dim("\nIndexes:"));
-              const indexResult = await this.client.query(`
-                            SHOW INDEX FROM ${tableName} FROM ${this.dbName};
-                        `);
-
-              if (indexResult.rows && indexResult.rows.length > 0) {
-                indexResult.rows.forEach((idx) => {
-                  console.log(
-                    `  ${chalk.blue(idx.Key_name)} ${
-                      idx.Non_unique === 0 ? "(unique)" : ""
-                    } on ${chalk.green(idx.Column_name)}`
-                  );
-                });
-              } else {
-                console.log(chalk.dim("  No indexes"));
-              }
-
-              // Show foreign keys
-              console.log(chalk.dim("\nForeign Keys:"));
-              const fkResult = await this.client.query(`
-                            SELECT 
-                                CONSTRAINT_NAME,
-                                COLUMN_NAME,
-                                REFERENCED_TABLE_NAME,
-                                REFERENCED_COLUMN_NAME
-                            FROM information_schema.KEY_COLUMN_USAGE
-                            WHERE TABLE_SCHEMA = '${this.dbName}'
-                                AND TABLE_NAME = '${tableName}'
-                                AND REFERENCED_TABLE_NAME IS NOT NULL;
-                        `);
-
-              if (fkResult.rows && fkResult.rows.length > 0) {
-                fkResult.rows.forEach((fk) => {
-                  console.log(
-                    `  ${chalk.green(fk.COLUMN_NAME)} → ${chalk.blue(
-                      fk.REFERENCED_TABLE_NAME
-                    )}.${chalk.green(fk.REFERENCED_COLUMN_NAME)}`
-                  );
-                });
-              } else {
-                console.log(chalk.dim("  No foreign keys"));
-              }
             }
-          } catch (error) {
-            console.error(
-              chalk.red(`Error fetching schema: ${(error as Error).message}`)
-            );
-          }
-          break;
+
+            const tableName = args;
+            
+            try {
+                if (this.isDockerClient) {
+                    // Print header once
+                    console.log(chalk.cyan(`Schema for table: ${tableName}`));
+
+                    // Get and print columns
+                    const columnsResult = await this.client.query(`
+                        SELECT 
+                            COLUMN_NAME as Field,
+                            COLUMN_TYPE as Type,
+                            IS_NULLABLE as 'Null',
+                            COLUMN_KEY as 'Key',
+                            COLUMN_DEFAULT as 'Default',
+                            EXTRA as Extra
+                        FROM information_schema.columns 
+                        WHERE table_schema = '${this.dbName}'
+                        AND table_name = '${tableName}'
+                        ORDER BY ORDINAL_POSITION;
+                    `);
+
+                    if (!columnsResult.rows || columnsResult.rows.length === 0) {
+                        console.log(chalk.red(`No schema found for table: ${tableName}`));
+                        return;
+                    }
+
+                    // Print columns
+                    console.log("\nField\tType\tNull\tKey\tDefault\tExtra");
+                    console.log("─".repeat(80));
+
+                    columnsResult.rows.forEach((row) => {
+                        console.log(
+                            `${chalk.green(row.Field)}\t` +
+                            `${chalk.yellow(row.Type)}\t` +
+                            `${row.Null === "YES" ? "YES" : "NO"}\t` +
+                            `${row.Key || "-"}\t` +
+                            `${row.Default || "NULL"}\t` +
+                            `${row.Extra || "-"}`
+                        );
+                    });
+
+                    // Get and print indexes
+                    console.log("\nIndexes:");
+                    const indexResult = await this.client.query(`
+                        SELECT DISTINCT 
+                            INDEX_NAME,
+                            GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) as columns
+                        FROM information_schema.STATISTICS
+                        WHERE TABLE_SCHEMA = '${this.dbName}'
+                        AND TABLE_NAME = '${tableName}'
+                        GROUP BY INDEX_NAME
+                        ORDER BY INDEX_NAME;
+                    `);
+
+                    if (indexResult.rows && indexResult.rows.length > 0) {
+                        indexResult.rows.forEach((idx) => {
+                            console.log(`  ${chalk.blue(idx.INDEX_NAME)} on ${chalk.green(idx.columns)}`);
+                        });
+                    } else {
+                        console.log("  No indexes");
+                    }
+
+                    // Get and print foreign keys
+                    console.log("\nForeign Keys:");
+                    const fkResult = await this.client.query(`
+                        SELECT DISTINCT
+                            k.COLUMN_NAME,
+                            k.REFERENCED_TABLE_NAME,
+                            k.REFERENCED_COLUMN_NAME
+                        FROM information_schema.KEY_COLUMN_USAGE k
+                        JOIN information_schema.TABLE_CONSTRAINTS tc
+                            ON k.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+                            AND k.TABLE_SCHEMA = tc.TABLE_SCHEMA
+                            AND k.TABLE_NAME = tc.TABLE_NAME
+                        WHERE k.TABLE_SCHEMA = '${this.dbName}'
+                            AND k.TABLE_NAME = '${tableName}'
+                            AND k.REFERENCED_TABLE_NAME IS NOT NULL
+                            AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+                        ORDER BY k.COLUMN_NAME;
+                    `);
+
+                    if (fkResult.rows && fkResult.rows.length > 0) {
+                        fkResult.rows.forEach((fk) => {
+                            console.log(`  ${chalk.green(fk.COLUMN_NAME)} → ${chalk.blue(
+                                fk.REFERENCED_TABLE_NAME)}.${chalk.green(fk.REFERENCED_COLUMN_NAME)}`
+                            );
+                        });
+                    } else {
+                        console.log("  No foreign keys");
+                    }
+
+                    // Call prompt only once at the end
+                    this.prompt();
+                }
+            } catch (error) {
+                console.error(chalk.red(`Error fetching schema: ${(error as Error).message}`));
+                this.prompt();
+            }
+            return;
         }
 
         case "tables": {
@@ -495,8 +500,109 @@ export class InteractiveCLI {
                                 const selectedTable = tableNames[currentIndex];
                                 cleanup();
                                 process.stdout.write('\x1Bc');
-                                await this.handleDotCommand(`.schema ${selectedTable}`);
-                                resolve();
+                                
+                                try {
+                                    // Print header once
+                                    console.log(chalk.cyan(`Schema for table: ${selectedTable}`));
+
+                                    // Get and print columns
+                                    const columnsResult = await this.client.query(`
+                                        SELECT 
+                                            COLUMN_NAME as Field,
+                                            COLUMN_TYPE as Type,
+                                            IS_NULLABLE as 'Null',
+                                            COLUMN_KEY as 'Key',
+                                            COLUMN_DEFAULT as 'Default',
+                                            EXTRA as Extra
+                                        FROM information_schema.columns 
+                                        WHERE table_schema = '${this.dbName}'
+                                        AND table_name = '${selectedTable}'
+                                        ORDER BY ORDINAL_POSITION;
+                                    `);
+
+                                    // Print columns once
+                                    console.log("\nField\tType\tNull\tKey\tDefault\tExtra");
+                                    console.log("─".repeat(80));
+
+                                    columnsResult.rows.forEach((row) => {
+                                        console.log(
+                                            `${chalk.green(row.Field)}\t` +
+                                            `${chalk.yellow(row.Type)}\t` +
+                                            `${row.Null === "YES" ? "YES" : "NO"}\t` +
+                                            `${row.Key || "-"}\t` +
+                                            `${row.Default || "NULL"}\t` +
+                                            `${row.Extra || "-"}`
+                                        );
+                                    });
+
+                                    // Get and print indexes (without duplicates)
+                                    console.log("\nIndexes:");
+                                    const indexResult = await this.client.query(`
+                                        SELECT DISTINCT 
+                                            INDEX_NAME,
+                                            GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) as columns,
+                                            NON_UNIQUE
+                                        FROM information_schema.STATISTICS
+                                        WHERE TABLE_SCHEMA = '${this.dbName}'
+                                        AND TABLE_NAME = '${selectedTable}'
+                                        GROUP BY INDEX_NAME, NON_UNIQUE
+                                        ORDER BY INDEX_NAME;
+                                    `);
+
+                                    if (indexResult.rows && indexResult.rows.length > 0) {
+                                        const uniqueIndexes = new Set();
+                                        indexResult.rows.forEach((idx) => {
+                                            if (!uniqueIndexes.has(idx.INDEX_NAME)) {
+                                                uniqueIndexes.add(idx.INDEX_NAME);
+                                                console.log(`  ${chalk.blue(idx.INDEX_NAME)} on ${chalk.green(idx.columns)}`);
+                                            }
+                                        });
+                                    } else {
+                                        console.log("  No indexes");
+                                    }
+
+                                    // Get and print foreign keys (with correct JOIN)
+                                    console.log("\nForeign Keys:");
+                                    const fkResult = await this.client.query(`
+                                        SELECT DISTINCT
+                                            k.COLUMN_NAME,
+                                            k.REFERENCED_TABLE_NAME,
+                                            k.REFERENCED_COLUMN_NAME
+                                        FROM information_schema.KEY_COLUMN_USAGE k
+                                        JOIN information_schema.TABLE_CONSTRAINTS tc
+                                            ON k.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+                                            AND k.TABLE_SCHEMA = tc.TABLE_SCHEMA
+                                            AND k.TABLE_NAME = tc.TABLE_NAME
+                                        WHERE k.TABLE_SCHEMA = '${this.dbName}'
+                                            AND k.TABLE_NAME = '${selectedTable}'
+                                            AND k.REFERENCED_TABLE_NAME IS NOT NULL
+                                            AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+                                        ORDER BY k.COLUMN_NAME;
+                                    `);
+
+                                    if (fkResult.rows && fkResult.rows.length > 0) {
+                                        const uniqueFKs = new Set();
+                                        fkResult.rows.forEach((fk) => {
+                                            const fkKey = `${fk.COLUMN_NAME}->${fk.REFERENCED_TABLE_NAME}.${fk.REFERENCED_COLUMN_NAME}`;
+                                            if (!uniqueFKs.has(fkKey)) {
+                                                uniqueFKs.add(fkKey);
+                                                console.log(`  ${chalk.green(fk.COLUMN_NAME)} → ${chalk.blue(
+                                                    fk.REFERENCED_TABLE_NAME)}.${chalk.green(fk.REFERENCED_COLUMN_NAME)}`
+                                                );
+                                            }
+                                        });
+                                    } else {
+                                        console.log("  No foreign keys");
+                                    }
+
+                                    this.prompt();
+                                    resolve();
+
+                                } catch (error) {
+                                    console.error(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+                                    this.prompt();
+                                    resolve();
+                                }
                                 break;
                             }
                         }
