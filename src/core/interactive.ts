@@ -22,6 +22,7 @@ export class InteractiveCLI {
   private client: UniversalClient;
   private completer: SQLCompleter;
   private historyManager: HistoryManager;
+  private handleLineBound: (line: string) => Promise<void>; // Add this property
   private dbName: string;
   private isDockerClient: boolean;
   private lastResults: {
@@ -40,6 +41,9 @@ export class InteractiveCLI {
     // Extract database name for history context
     this.dbName = client.connectionParameters?.database || "unknown";
 
+    // Bind the handler
+    this.handleLineBound = this.handleLine.bind(this);
+
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
@@ -47,6 +51,9 @@ export class InteractiveCLI {
       terminal: true,
       historySize: 100,
     });
+
+    // Use the bound handler
+    this.rl.on("line", this.handleLineBound);
 
     // Load history into readline
     const history = this.historyManager.getReadlineHistory();
@@ -407,86 +414,104 @@ export class InteractiveCLI {
         case "tables": {
             const schema = await loadSchema(this.client);
             const tableNames = Object.keys(schema);
-    
+
             if (tableNames.length === 0) {
                 console.log(chalk.yellow('No tables found in the current database.'));
                 break;
             }
-    
-            // Create interface for table selection
-            const selectInterface = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout,
-            });
-    
-            // Store current selection
+
             let currentIndex = 0;
-    
-            // Function to display tables with current selection
+            let isSelecting = true;
+
+            // Save terminal state
+            const originalRawMode = process.stdin.isRaw;
+
             const displayTables = () => {
-                console.clear(); // Clear screen
-                console.log(chalk.cyan('📋 Tables in database:'));
-                console.log('─'.repeat(40));
+                process.stdout.write('\x1Bc'); // Clear screen
+                console.log(chalk.cyan(`📋 Tables in database ${chalk.bold(this.dbName)}:`));
+                console.log('─'.repeat(50));
                 
                 tableNames.forEach((tableName, index) => {
-                    const prefix = index === currentIndex ? '>' : ' ';
+                    const prefix = index === currentIndex ? '▶' : ' ';
                     const tableDisplay = index === currentIndex 
                         ? chalk.green.bold(tableName)
                         : tableName;
-                    console.log(`${prefix} ${index + 1}. ${tableDisplay}`);
+                    console.log(`${prefix} ${(index + 1).toString().padStart(2)}. ${tableDisplay}`);
                 });
                 
-                console.log('─'.repeat(40));
-                console.log(chalk.yellow('Use ↑↓ to navigate, Enter to select, Ctrl+C to cancel'));
+                console.log('─'.repeat(50));
+                console.log(chalk.yellow('↑/↓: Navigate | Enter: Select | Ctrl+C: Cancel'));
             };
-    
-            // Initial display
-            displayTables();
-    
-            // Handle keypress
-            process.stdin.setRawMode(true);
-            process.stdin.resume();
-            process.stdin.setEncoding('utf8');
-    
-            return new Promise<void>((resolve) => {
-                const keyHandler = async (str: string, key: any) => {
-                    if (key.name === 'up') {
-                        currentIndex = Math.max(0, currentIndex - 1);
-                        displayTables();
-                    } 
-                    else if (key.name === 'down') {
-                        currentIndex = Math.min(tableNames.length - 1, currentIndex + 1);
-                        displayTables();
-                    }
-                    else if (key.name === 'return') {
-                        // Cleanup
-                        process.stdin.removeListener('keypress', keyHandler);
-                        process.stdin.setRawMode(false);
-                        selectInterface.close();
-                        console.clear();
-    
-                        // Show schema for selected table
-                        const selectedTable = tableNames[currentIndex];
-                        await this.handleDotCommand(`.schema ${selectedTable}`);
-                        resolve();
-                    }
-                    else if (key.name === 'c' && key.ctrl || key.name === 'd' && key.ctrl) {
-                        // Cleanup
-                        process.stdin.removeListener('keypress', keyHandler);
-                        process.stdin.setRawMode(false);
-                        selectInterface.close();
-                        console.clear();
-                        
-                        // Return to prompt
-                        this.prompt();
-                        resolve();
-                    }
-                };
-    
-                // Listen for keypress
+
+            const cleanup = () => {
+                isSelecting = false;
+                // Restore terminal state
+                process.stdin.setRawMode(originalRawMode);
+                process.stdin.removeAllListeners('keypress');
+                
+                // Create a new readline interface
+                this.rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout,
+                    completer: this.getCompleter(),
+                    terminal: true,
+                    historySize: 100
+                });
+                
+                // Rebind the handler
+                this.rl.on('line', this.handleLineBound);
+            };
+
+            try {
+                // Configure terminal for interactive selection
+                process.stdin.setRawMode(true);
+                process.stdin.resume();
                 require('readline').emitKeypressEvents(process.stdin);
-                process.stdin.on('keypress', keyHandler);
-            });
+
+                await new Promise<void>((resolve) => {
+                    const handleKeypress = async (str: string, key: any) => {
+                        if (!isSelecting) return;
+
+                        if ((key.name === 'c' && key.ctrl) || (key.name === 'd' && key.ctrl)) {
+                            cleanup();
+                            process.stdout.write('\x1Bc');
+                            this.prompt();
+                            resolve();
+                            return;
+                        }
+
+                        switch (key.name) {
+                            case 'up':
+                                currentIndex = Math.max(0, currentIndex - 1);
+                                displayTables();
+                                break;
+
+                            case 'down':
+                                currentIndex = Math.min(tableNames.length - 1, currentIndex + 1);
+                                displayTables();
+                                break;
+
+                            case 'return': {
+                                const selectedTable = tableNames[currentIndex];
+                                cleanup();
+                                process.stdout.write('\x1Bc');
+                                await this.handleDotCommand(`.schema ${selectedTable}`);
+                                resolve();
+                                break;
+                            }
+                        }
+                    };
+
+                    process.stdin.on('keypress', handleKeypress);
+                    displayTables();
+                });
+
+            } catch (error) {
+                console.error(chalk.red('Error:', error));
+                cleanup();
+            }
+
+            return;
         }
 
         default:
