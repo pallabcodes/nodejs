@@ -1,0 +1,138 @@
+# ===================================
+# 🏗️ Enhanced Multi-stage Dockerfile  
+# Production-Grade with Security & Performance
+# ===================================
+
+# ----------------- Stage 1: Base Layer -----------------
+FROM node:18-alpine AS base
+
+# Install security updates and essential tools
+RUN apk update && apk upgrade && \
+    apk add --no-cache dumb-init curl && \
+    rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S appuser -u 1001 -G nodejs
+
+# Set working directory
+WORKDIR /app
+
+# Change ownership to appuser
+RUN chown -R appuser:nodejs /app
+
+# ----------------- Stage 2: Dependencies -----------------
+FROM base AS dependencies
+
+# Copy package files as appuser
+USER appuser
+COPY --chown=appuser:nodejs package*.json ./
+
+# Install production dependencies only with cache optimization
+RUN npm ci --only=production --silent && \
+    npm cache clean --force
+
+# ----------------- Stage 3: Development Dependencies -----------------
+FROM base AS dev-dependencies
+
+USER appuser
+COPY --chown=appuser:nodejs package*.json ./
+
+# Install all dependencies for building/testing
+RUN npm ci --silent
+
+# ----------------- Stage 4: Build & Test -----------------
+FROM dev-dependencies AS build
+
+# Copy source code
+COPY --chown=appuser:nodejs . .
+
+# Run quality checks and tests
+RUN npm run lint && \
+    npm run format:check && \
+    npm run test:ci && \
+    npm run security:audit
+
+# Clean up development files
+RUN rm -rf coverage/ .nyc_output/ node_modules/
+
+# ----------------- Stage 5: Production Runtime -----------------
+FROM base AS runtime
+
+# Set production environment
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    NPM_CONFIG_LOGLEVEL=warn
+
+# Copy production dependencies
+COPY --from=dependencies --chown=appuser:nodejs /app/node_modules ./node_modules
+
+# Copy application code
+COPY --chown=appuser:nodejs . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p logs uploads tmp && \
+    chown -R appuser:nodejs logs uploads tmp && \
+    chmod 755 logs uploads tmp
+
+# Remove development files and security-sensitive files
+RUN rm -rf \
+    .git/ \
+    .github/ \
+    coverage/ \
+    .nyc_output/ \
+    test/ \
+    tests/ \
+    __tests__/ \
+    *.test.js \
+    *.spec.js \
+    .env.example \
+    .env.* \
+    Dockerfile* \
+    docker-compose* \
+    README.md \
+    CONTRIBUTING.md \
+    CHANGELOG.md \
+    docs/ \
+    scripts/dev/ \
+    .eslintrc* \
+    .prettierrc* \
+    jest.config.js \
+    jest.setup.js
+
+# Security: Remove package managers and unnecessary binaries
+USER root
+RUN rm -rf \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx \
+    /usr/local/lib/node_modules/npm \
+    /opt/yarn* \
+    /home/appuser/.npm \
+    /tmp/*
+
+# Switch back to non-root user
+USER appuser
+
+# Health check with timeout and retries
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:$PORT/health || exit 1
+
+# Expose port
+EXPOSE $PORT
+
+# Use dumb-init for proper signal handling and zombie reaping
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application with optimized flags
+CMD ["node", "--max-old-space-size=512", "--enable-source-maps", "server.js"]
+
+# Labels for metadata and OCI compliance
+LABEL \
+    org.opencontainers.image.title="SmartVault Backend" \
+    org.opencontainers.image.description="Production-grade Node.js backend with functional architecture" \
+    org.opencontainers.image.version="1.0.0" \
+    org.opencontainers.image.vendor="SmartVault" \
+    org.opencontainers.image.licenses="ISC" \
+    org.opencontainers.image.source="https://github.com/pallabcodes/nodejs" \
+    maintainer="pallab@smartvault.com"

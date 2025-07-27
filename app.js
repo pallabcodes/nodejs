@@ -11,6 +11,7 @@ import { getRateLimiter } from './src/infrastructure/rate-limiter.js';
 
 // Import routes
 import userRoutes from './src/modules/users/routes/index.js';
+import healthRoutes from './src/routes/health.js';
 
 // Pure function to create Express app
 const createApp = async () => {
@@ -44,6 +45,9 @@ const createApp = async () => {
 
 // Pure function to setup routes
 const setupRoutes = ({ app }) => {
+  // Health Check Routes (should be first)
+  app.use('/', healthRoutes);
+  
   // API Documentation
   app.use('/api-docs', ...swaggerMiddleware);
   
@@ -52,23 +56,9 @@ const setupRoutes = ({ app }) => {
   return { app };
 };
 
-// Pure function to setup health check
+// Pure function to setup health check (legacy - now handled by healthRoutes)
 const setupHealthCheck = ({ app }) => {
-  app.get('/health', async (req, res) => {
-    try {
-      // Test database connection
-      await db.sequelize.authenticate();
-      
-      res.success({
-        status: 'ok',
-        database: 'connected',
-        environment: process.env.NODE_ENV || 'development',
-        apm: apm.isEnabled ? 'enabled' : 'disabled'
-      });
-    } catch (error) {
-      res.error(error);
-    }
-  });
+  // Health check is now handled by dedicated health routes
   return { app };
 };
 

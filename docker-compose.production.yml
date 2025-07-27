@@ -1,0 +1,245 @@
+# ===================================
+# 🐳 Docker Compose - Production Stack
+# ===================================
+
+version: '3.8'
+
+services:
+  # ===================================
+  # 🚀 Application Service
+  # ===================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: runtime
+    image: smartvault-backend:latest
+    container_name: smartvault-backend
+    restart: unless-stopped
+    
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_URL=mysql://smartvault:${DB_PASSWORD}@db:3306/smartvault_prod
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+    
+    ports:
+      - "3000:3000"
+    
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    
+    networks:
+      - smartvault_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # ===================================
+  # 🗄️ Database Service
+  # ===================================
+  db:
+    image: mysql:8.0
+    container_name: smartvault-db
+    restart: unless-stopped
+    
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=smartvault_prod
+      - MYSQL_USER=smartvault
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
+    ports:
+      - "3306:3306"
+    
+    networks:
+      - smartvault_network
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "smartvault", "-p${DB_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=1G
+      --max-connections=200
+      --query-cache-size=0
+      --query-cache-type=0
+      --innodb-log-file-size=256M
+
+  # ===================================
+  # 📦 Redis Cache Service
+  # ===================================
+  redis:
+    image: redis:7-alpine
+    container_name: smartvault-redis
+    restart: unless-stopped
+    
+    command: >
+      redis-server 
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    
+    volumes:
+      - redis_data:/data
+    
+    ports:
+      - "6379:6379"
+    
+    networks:
+      - smartvault_network
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===================================
+  # 🔄 Reverse Proxy (Nginx)
+  # ===================================
+  nginx:
+    image: nginx:alpine
+    container_name: smartvault-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    
+    depends_on:
+      app:
+        condition: service_healthy
+    
+    networks:
+      - smartvault_network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================
+  # 📊 Monitoring - Prometheus
+  # ===================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: smartvault-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    
+    networks:
+      - smartvault_network
+
+  # ===================================
+  # 📈 Monitoring - Grafana
+  # ===================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: smartvault-grafana
+    restart: unless-stopped
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    
+    ports:
+      - "3001:3000"
+    
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    
+    depends_on:
+      - prometheus
+    
+    networks:
+      - smartvault_network
+
+# ===================================
+# 📦 Volumes
+# ===================================
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_uploads:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ===================================
+# 🌐 Networks
+# ===================================
+networks:
+  smartvault_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
